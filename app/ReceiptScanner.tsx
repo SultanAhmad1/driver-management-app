@@ -31,38 +31,47 @@ export default function ReceiptScanner() {
 
   const runOCR = async (src: string) => {
     setLoading(true);
-    const result = await Tesseract.recognize(src, "eng");
-    const ocrText = result.data.text;
-    setText(ocrText);
 
-    const parsedData = parseReceiptText(ocrText);
-    setReceiptData(parsedData);
+    try {
+      const result = await Tesseract.recognize(src, "eng", {
+        logger: (m) => console.log(m), // logs progress
+      });
 
-    setLoading(false);
+      const ocrText = result.data.text;
+      setText(ocrText);
+
+      const parsedData = parseReceiptText(ocrText);
+      setReceiptData(parsedData);
+
+    } catch (err) {
+      console.error("OCR error:", err);
+      alert("Failed to read receipt. Try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const parseReceiptText = (text: string): ReceiptData => {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
     const data: ReceiptData = { items: [] };
 
-    // Simple rules to find total
     for (const line of lines) {
-      // Total amount (matches £10.50 or 10.50)
+      // Total
       if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
         data.total = line.match(/£?\d+(\.\d{2})?/)![0];
       }
 
-      // Name: assume first line with letters + space
+      // Name: first line with letters + space
       if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
         data.name = line;
       }
 
-      // Address: look for street/road keywords
+      // Address: street/road/ave/etc.
       if (!data.address && /(street|road|lane|ave|boulevard|blvd)/i.test(line)) {
         data.address = line;
       }
 
-      // Items: look for lines with quantity x product pattern
+      // Items: quantity x product pattern
       if (line.match(/\d+\s?[xX]\s?.+/)) {
         data.items?.push(line);
       }
@@ -114,8 +123,9 @@ export default function ReceiptScanner() {
 
       {loading && <p className="mt-3">🧠 Reading receipt...</p>}
 
+      {/* Parsed data */}
       {receiptData && (
-        <div className="mt-4 bg-gray-100 p-3 rounded">
+        <div className="mt-4 p-3 rounded">
           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
           <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
           <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
@@ -133,12 +143,14 @@ export default function ReceiptScanner() {
         </div>
       )}
 
-      {text && !receiptData && (
+      {/* Full OCR text */}
+      {text && (
         <div className="mt-4 bg-gray-50 p-3 rounded">
-          <h3 className="font-semibold mb-2">OCR Raw Text</h3>
-          <pre className="whitespace-pre-wrap">{text}</pre>
+          <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
+          <pre className="whitespace-pre-wrap text-sm">{text}</pre>
         </div>
       )}
+
     </div>
   );
 }
