@@ -7,6 +7,8 @@ import Tesseract from "tesseract.js";
 type ReceiptData = {
   name?: string;
   address?: string;
+  doorNumber?: string;
+  postcode?: string;
   total?: string;
   items?: string[];
 };
@@ -31,7 +33,6 @@ export default function ReceiptScanner() {
 
   const runOCR = async (src: string) => {
     setLoading(true);
-
     try {
       const result = await Tesseract.recognize(src, "eng", {
         logger: (m) => console.log(m), // logs progress
@@ -42,7 +43,6 @@ export default function ReceiptScanner() {
 
       const parsedData = parseReceiptText(ocrText);
       setReceiptData(parsedData);
-
     } catch (err) {
       console.error("OCR error:", err);
       alert("Failed to read receipt. Try again.");
@@ -54,8 +54,11 @@ export default function ReceiptScanner() {
   const parseReceiptText = (text: string): ReceiptData => {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
     const data: ReceiptData = { items: [] };
+    let addressLines: string[] = [];
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
       // Total
       if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
         data.total = line.match(/£?\d+(\.\d{2})?/)![0];
@@ -66,15 +69,30 @@ export default function ReceiptScanner() {
         data.name = line;
       }
 
-      // Address: street/road/ave/etc.
-      if (!data.address && /(street|road|lane|ave|boulevard|blvd)/i.test(line)) {
-        data.address = line;
-      }
-
       // Items: quantity x product pattern
       if (line.match(/\d+\s?[xX]\s?.+/)) {
         data.items?.push(line);
       }
+
+      // Address lines: street keywords or starts with number
+      if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
+        addressLines.push(line);
+      }
+    }
+
+    if (addressLines.length > 0) {
+      const fullAddress = addressLines.join(", ");
+      data.address = fullAddress;
+
+      // Door number: first number at start of first address line
+      const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
+      if (doorMatch) data.doorNumber = doorMatch[0];
+
+      // Postcode: try to find anywhere in full address
+      const postcodeMatch = fullAddress.match(
+        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+      );
+      if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
     }
 
     return data;
@@ -82,7 +100,6 @@ export default function ReceiptScanner() {
 
   return (
     <div className="p-4 max-w-md mx-auto">
-
       <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
 
       {!image && (
@@ -125,10 +142,12 @@ export default function ReceiptScanner() {
 
       {/* Parsed data */}
       {receiptData && (
-        <div className="mt-4 p-3 rounded">
+        <div className="mt-4 p-3 rounded border">
           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
           <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
           <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
+          <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+          <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
           <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
           {receiptData.items && receiptData.items.length > 0 && (
             <div>
@@ -150,7 +169,6 @@ export default function ReceiptScanner() {
           <pre className="whitespace-pre-wrap text-sm">{text}</pre>
         </div>
       )}
-
     </div>
   );
 }
