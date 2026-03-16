@@ -67,7 +67,6 @@ export default function ReceiptScanner() {
       //   doorNo: parsedData.doorNumber,
       //   postcode: parsedData.postcode,
       // }))
-
     } catch (err) {
       console.error("OCR error:", err);
       alert("Failed to read receipt. Try again.");
@@ -297,12 +296,12 @@ export default function ReceiptScanner() {
                 )}
 
                 {/* Full OCR text */}
-                {/* {text && (
+                {text && (
                   <div className="mt-4 bg-gray-50 p-3 rounded">
                     <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
                     <pre className="whitespace-pre-wrap text-sm">{text}</pre>
                   </div>
-                )} */}
+                )}
               </div>
                 </div>
 
