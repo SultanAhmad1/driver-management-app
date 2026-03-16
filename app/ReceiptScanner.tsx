@@ -57,7 +57,7 @@ export default function ReceiptScanner() {
 
     processingRef.current = false;
   };
-  
+
   // LIVE SCAN LOOP
 
   useEffect(() => {
@@ -228,8 +228,9 @@ export default function ReceiptScanner() {
           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
           <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
           <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
-          <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
-          <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
+          {/* <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p> */}
+          <p><strong>Door Number:</strong> {receiptData.doorNumber}</p>
+          <p><strong>Postcode:</strong> {receiptData.postcode}</p>
           <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
           {receiptData.items && receiptData.items.length > 0 && (
             <div>
