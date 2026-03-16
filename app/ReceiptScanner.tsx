@@ -213,19 +213,19 @@ export default function ReceiptScanner() {
 
         {
           optionSelected === 1 &&
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 overflow-h" style={{minHeight: "10vh"}}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" >
             <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
               
               {/* Modal Header */}
               <div className="flex justify-between items-center border-b px-4 py-3">
-                <h3 className="text-lg font-semibold">Modal Title</h3>
+                <h3 className="text-lg font-semibold">Modal Title 1</h3>
                 <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
                   ✕
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-4 max-w-md mx-auto">
+              <div className=" overflow-h p-4 max-w-md mx-auto" style={{minHeight: "10vh"}}>
                 <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
           
                 {!image && (
