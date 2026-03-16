@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import Tesseract from "tesseract.js";
 
@@ -20,6 +20,102 @@ export default function ReceiptScanner() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+
+   const [scanStatus, setScanStatus] = useState<"idle" | "valid" | "invalid">(
+    "idle"
+  );
+
+  const [distanceMessage, setDistanceMessage] = useState(
+  "Place the receipt about 2–3 meters from the camera"
+);
+
+    const processingRef = useRef(false);
+
+//    const checkFrame = async () => {
+//   if (!webcamRef.current || processingRef.current) return;
+
+//   const frame = webcamRef.current.getScreenshot();
+//   if (!frame) return;
+
+//   processingRef.current = true;
+
+//   try {
+//     const result = await Tesseract.recognize(frame, "eng");
+//     const text = result.data.text;
+
+//     const doorMatch = text.match(/^\d+[A-Za-z]?/m);
+
+//     const postcodeMatch = text.match(
+//       /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+//     );
+
+//     if (doorMatch && postcodeMatch) {
+//       setScanStatus("valid");
+//       setDistanceMessage("✅ Perfect distance — receipt readable");
+//     } else {
+//       setScanStatus("invalid");
+//       setDistanceMessage(
+//         "❌ Move receipt closer (recommended distance: 2–3 meters)"
+//       );
+//     }
+//   } catch (err) {
+//     setScanStatus("invalid");
+//     setDistanceMessage("❌ Unable to detect receipt — adjust distance (2–3m)");
+//   }
+
+//   processingRef.current = false;
+// };
+
+  // LIVE SCAN LOOP
+
+  const checkFrame = async () => {
+    if (!webcamRef.current || processingRef.current) return;
+
+    const frame = webcamRef.current.getScreenshot();
+    if (!frame) return;
+
+    processingRef.current = true;
+
+    try {
+      const result = await Tesseract.recognize(frame, "eng");
+      const text = result.data.text;
+
+      // UK postcode
+      const postcodeMatch = text.match(
+        /\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i
+      );
+
+      // Address indicators
+      const addressMatch = text.match(
+        /(street|road|lane|avenue|drive|court|close|way|hall|kitchen|restaurant|flat|apartment)/i
+      );
+
+      // Number in address
+      const numberMatch = text.match(/\b\d{1,4}\b/);
+
+      if (postcodeMatch && (addressMatch || numberMatch)) {
+        setScanStatus("valid");
+        setDistanceMessage("✅ Perfect distance — receipt readable");
+      } else {
+        setScanStatus("invalid");
+        setDistanceMessage(
+          "❌ Move receipt closer (recommended distance: 20–40 cm)"
+        );
+      }
+    } catch (err) {
+      setScanStatus("invalid");
+      setDistanceMessage("❌ Unable to detect receipt — adjust distance");
+    }
+
+    processingRef.current = false;
+  };
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkFrame();
+    }, 1500); // scan every 1.5 sec
+
+    return () => clearInterval(interval);
+  }, []);
 
   const capture = async () => {
     const screenshot = webcamRef.current?.getScreenshot();
@@ -98,28 +194,77 @@ export default function ReceiptScanner() {
     return data;
   };
 
+    const borderColor =
+    scanStatus === "valid"
+      ? "border-green-500"
+      : scanStatus === "invalid"
+      ? "border-red-500"
+      : "border-gray-300";
+
   return (
     <div className="p-4 max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-3">Receipt Scanner - early</h2>
+      <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
 
       {!image && (
-        <Webcam
-          ref={webcamRef}
-          screenshotFormat="image/jpeg"
-          audio={false}
-          width={350}
-          mirrored={false}
-          videoConstraints={{ facingMode: "environment" }}
-        />
+        <div className="relative">
+          <Webcam
+            ref={webcamRef}
+            screenshotFormat="image/jpeg"
+            audio={false}
+            width={350}
+            mirrored={false}
+            videoConstraints={{ facingMode: "environment" }}
+          />
+
+          {/* Live Scan Box */}
+          <div
+            className={`absolute top-10 left-6 right-6 bottom-10 border-4 rounded-lg pointer-events-none flex items-center justify-center text-center p-2 ${borderColor}`}
+          >
+            <p className="text-sm font-medium text-white bg-black bg-opacity-40 p-1 rounded">
+              {distanceMessage}
+            </p>
+          </div>
+
+          <p className="text-center mt-2 text-sm">
+            Keep receipt inside box until it turns green
+          </p>
+        </div>
       )}
 
-      {!image && (
+
+         {!image && (
         <button
           onClick={capture}
-          className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+          disabled={scanStatus !== "valid"}
+          className={`mt-3 px-4 py-2 rounded text-white ${
+            scanStatus === "valid" ? "bg-green-600" : "bg-gray-400"
+          }`}
         >
           Take Photo
         </button>
+      )}
+
+         {scanStatus === "valid" && (
+          <>
+            <p className="text-green-600 font-semibold mt-2">
+              ✅ Receipt readable
+            </p>
+            <p className="text-center mt-2 text-sm font-medium">
+              {distanceMessage}
+            </p>
+          </>
+      )}
+
+      {scanStatus === "invalid" && (
+        <>
+          <p className="text-red-600 font-semibold mt-2">
+            ❌ Move receipt closer or improve lighting
+          </p>
+          <p className="text-center mt-2 text-sm font-medium">
+            {distanceMessage}
+          </p>
+        
+        </>
       )}
 
       {image && (
@@ -146,7 +291,8 @@ export default function ReceiptScanner() {
           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
           <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
           <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
-          <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+          {/* <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p> */}
+          <p><strong>Door Number:</strong> {receiptData.doorNumber}</p>
           <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
           <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
           {receiptData.items && receiptData.items.length > 0 && (
