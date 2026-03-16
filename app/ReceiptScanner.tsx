@@ -220,7 +220,7 @@ export default function ReceiptScanner() {
 
           {
             optionSelected === 1 &&
-            <div className="overflow-auto fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
                 
                 {/* Modal Header */}
@@ -233,28 +233,28 @@ export default function ReceiptScanner() {
 
                 {/* Modal Body */}
                 <div className="p-4 space-y-4">
-                  <div className="p-4 max-w-md mx-auto">
-                    <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+                   <div className="p-4 max-w-md mx-auto">
+                <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
 
-                    {!image && (
-                      <Webcam
-                        ref={webcamRef}
-                        screenshotFormat="image/jpeg"
-                        audio={false}
-                        width={350}
-                        mirrored={false}
-                        videoConstraints={{ facingMode: "environment" }}
-                      />
-                    )}
+                {!image && (
+                  <Webcam
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    audio={false}
+                    width={350}
+                    mirrored={false}
+                    videoConstraints={{ facingMode: "environment" }}
+                  />
+                )}
 
-                  {!image && (
-                    <button
-                      onClick={capture}
-                      className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-                    >
-                      Take Photo
-                    </button>
-                  )}
+                {!image && (
+                  <button
+                    onClick={capture}
+                    className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                  >
+                    Take Photo
+                  </button>
+                )}
 
                 {image && (
                   <div className="mt-4">
@@ -324,6 +324,7 @@ export default function ReceiptScanner() {
 
               </div>
             </div>
+             
           }
 
           {/* Order Number */}
