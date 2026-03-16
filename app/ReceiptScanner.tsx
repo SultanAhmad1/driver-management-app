@@ -105,6 +105,10 @@ export default function ReceiptScanner() {
      Receipt parser
   -----------------------------*/
 
+   /* ----------------------------
+     Receipt parser
+  -----------------------------*/
+
   const parseReceiptText = (text: string): ReceiptData => {
     const lines = text
       .split("\n")
@@ -113,21 +117,16 @@ export default function ReceiptScanner() {
 
     const data: ReceiptData = { items: [] };
 
-    const postcodeRegex =
-      /\b[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}\b/i;
-
-    const streetRegex =
-      /(street|road|lane|avenue|drive|way|close|court)/i;
+    // UK Postcode Regex
+    const postcodeRegex = /\b[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}\b/i;
+    const streetKeywords = /(street|road|lane|avenue|drive|way|close|court|st|rd|ln|ave|dr|cl)/i;
 
     let postcodeIndex = -1;
 
-    /* find postcode */
-
+    /* 1. Find Postcode */
     for (let i = 0; i < lines.length; i++) {
-      const fixed = lines[i].replace(/^0L/i, "OL");
-
+      const fixed = lines[i].replace(/^0L/i, "OL"); // Common OCR error fix
       const match = fixed.match(postcodeRegex);
-
       if (match) {
         data.postcode = match[0].toUpperCase();
         postcodeIndex = i;
@@ -135,45 +134,54 @@ export default function ReceiptScanner() {
       }
     }
 
-    /* find door number or building */
-
+    /* 2. Find Door Number or Building Name */
     if (postcodeIndex > 0) {
+      // Look at the 3 lines directly above the postcode
       const candidates = [
         lines[postcodeIndex - 1],
         lines[postcodeIndex - 2],
         lines[postcodeIndex - 3],
-      ];
+      ].filter(Boolean);
 
       for (const c of candidates) {
-        if (!c) continue;
+        // Regex for Type 1: Numeric (e.g., "133", "133A", "Flat 4")
+        const isNumericDoor = /^(\d+[A-Za-z]?|(flat|unit|suite)\s?\d+)$/i.test(c);
+        
+        // Regex for Type 2: Building Name (e.g., "Meadow Hall")
+        // This looks for 2 or more capitalized words, or a single word that isn't a street type
+        const isBuildingName = /^[A-Z][a-z]+(\s[A-Z][a-z]+)+$/.test(c);
 
-        if (/^\d+[A-Za-z]?$/.test(c)) {
-          data.doorNumber = c;
-          break;
-        }
-
-        if (/^[A-Za-z]+\s?[A-Za-z]+$/.test(c)) {
-          data.doorNumber = c;
-          break;
+        if (isNumericDoor || isBuildingName) {
+          // Additional check: Don't pick it up if it's just the street name (e.g. "Meadow Road")
+          if (!streetKeywords.test(c)) {
+            data.doorNumber = c;
+            break;
+          }
         }
       }
     }
 
+    /* 3. Extract rest of the info */
     const addressLines: string[] = [];
 
     for (const line of lines) {
-      if (streetRegex.test(line)) {
+      // Capture street address
+      if (streetKeywords.test(line)) {
         addressLines.push(line);
       }
 
-      if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
+      // Capture Name (Look for Title Case words like "John Doe")
+      if (!data.name && /^[A-Z][a-z]+\s[A-Z][a-z]+/.test(line)) {
         data.name = line;
       }
 
-      if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
-        data.total = line.match(/£?\d+(\.\d{2})?/)![0];
+      // Capture Total
+      if (!data.total && /[£$]\d+(\.\d{2})?/.test(line)) {
+        const match = line.match(/[£$]\d+(\.\d{2})?/);
+        if (match) data.total = match[0];
       }
 
+      // Capture Items (e.g. "1 x Pizza")
       if (/\d+\s?[xX]\s?.+/.test(line)) {
         data.items?.push(line);
       }
@@ -185,6 +193,7 @@ export default function ReceiptScanner() {
 
     return data;
   };
+
 
   /* ----------------------------
      UI
