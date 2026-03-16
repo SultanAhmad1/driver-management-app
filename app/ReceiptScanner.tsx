@@ -220,112 +220,111 @@ export default function ReceiptScanner() {
 
           {
             optionSelected === 1 &&
-            <>
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
-                  
-                  {/* Modal Header */}
-                  <div className="flex justify-between items-center border-b px-4 py-3">
-                    <h3 className="text-lg font-semibold">Modal Title</h3>
-                    <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
-                      ✕
-                    </button>
-                  </div>
-
-                  {/* Modal Body */}
-                  <div className="p-4 overflow-y-auto flex-1 space-y-4">
-                    <div className="max-w-md mx-auto">
-                      <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
-
-                      {!image && (
-                        <Webcam
-                          ref={webcamRef}
-                          screenshotFormat="image/jpeg"
-                          audio={false}
-                          width={350}
-                          mirrored={false}
-                          videoConstraints={{ facingMode: "environment" }}
-                        />
-                      )}
-
-                      {!image && (
-                        <button
-                          onClick={capture}
-                          className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-                        >
-                          Take Photo
-                        </button>
-                      )}
-
-                      {image && (
-                        <div className="mt-4">
-                          <img src={image} className="rounded border" />
-                          <button
-                            onClick={() => {
-                              setImage(null);
-                              setText("");
-                              setReceiptData(null);
-                            }}
-                            className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
-                          >
-                            Retake
-                          </button>
-                        </div>
-                      )}
-
-                      {loading && <p className="mt-3">🧠 Reading receipt...</p>}
-
-                      {/* Parsed data */}
-                      {receiptData && (
-                        <div className="mt-4 p-3 rounded border">
-                          <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
-                          <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
-                          <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
-                          <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
-                          <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
-                          {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
-                          {/* {receiptData.items && receiptData.items.length > 0 && (
-                            <div>
-                              <strong>Items:</strong>
-                              <ul className="list-disc ml-5">
-                                {receiptData.items.map((item, i) => (
-                                  <li key={i}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )} */}
-                        </div>
-                      )}
-
-                      {/* Full OCR text */}
-                      {/* {text && (
-                        <div className="mt-4 bg-gray-50 p-3 rounded">
-                          <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
-                          <pre className="whitespace-pre-wrap text-sm">{text}</pre>
-                        </div>
-                      )} */}
-                    </div>
-                  </div>
-
-                  {/* Modal Footer */}
-                  <div className="flex justify-end gap-2 border-t px-4 py-3">
-                    <button
-                      className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                      onClick={() => setOptionSelected(0)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                      onClick={() => setOptionSelected(2)}
-                    >
-                      Save
-                    </button>
-                  </div>
-
+            <div className="overflow-auto fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+                
+                {/* Modal Header */}
+                <div className="flex justify-between items-center border-b px-4 py-3">
+                  <h3 className="text-lg font-semibold">Modal Title</h3>
+                  <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
+                    ✕
+                  </button>
                 </div>
+
+                {/* Modal Body */}
+                <div className="p-4 space-y-4">
+                  <div className="p-4 max-w-md mx-auto">
+                    <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+
+                    {!image && (
+                      <Webcam
+                        ref={webcamRef}
+                        screenshotFormat="image/jpeg"
+                        audio={false}
+                        width={350}
+                        mirrored={false}
+                        videoConstraints={{ facingMode: "environment" }}
+                      />
+                    )}
+
+                    {!image && (
+                      <button
+                        onClick={capture}
+                        className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                      >
+                        Take Photo
+                      </button>
+                    )}
+
+                    {image && (
+                      <div className="mt-4">
+                        <img src={image} className="rounded border" />
+                        <button
+                          onClick={() => {
+                            setImage(null);
+                            setText("");
+                            setReceiptData(null);
+                          }}
+                          className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
+                        >
+                          Retake
+                        </button>
+                      </div>
+                    )}
+
+                    {loading && <p className="mt-3">🧠 Reading receipt...</p>}
+
+                    {/* Parsed data */}
+                    {receiptData && (
+                      <div className="mt-4 p-3 rounded border">
+                        <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
+                        <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
+                        <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
+                        <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+                        <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
+                        {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
+                        {/* {receiptData.items && receiptData.items.length > 0 && (
+                          <div>
+                            <strong>Items:</strong>
+                            <ul className="list-disc ml-5">
+                              {receiptData.items.map((item, i) => (
+                                <li key={i}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )} */}
+                      </div>
+                    )}
+
+                    {/* Full OCR text */}
+                    {/* {text && (
+                      <div className="mt-4 bg-gray-50 p-3 rounded">
+                        <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
+                        <pre className="whitespace-pre-wrap text-sm">{text}</pre>
+                      </div>
+                    )} */}
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex justify-end gap-2 border-t px-4 py-3">
+                  <button
+                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                    onClick={() => setOptionSelected(0)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={() => setOptionSelected(2)}
+                  >
+                    Save
+                  </button>
+                </div>
+
               </div>
-            </>
+            </div>
+
           }
 
           {/* Order Number */}
