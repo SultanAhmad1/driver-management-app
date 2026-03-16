@@ -56,9 +56,6 @@ export default function ReceiptScanner() {
     const data: ReceiptData = { items: [] };
     let addressLines: string[] = [];
 
-    // Flag to detect when address starts (after customer name)
-    let foundName = false;
-
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
@@ -70,43 +67,36 @@ export default function ReceiptScanner() {
       // Name: first line with letters + space
       if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
         data.name = line;
-        foundName = true;
-        continue;
-      }
-
-      // After name, any line until postcode is considered address
-      if (foundName) {
-        // Skip phone numbers
-        if (/^Tel:/.test(line)) continue;
-
-        // Stop address collection if line contains postcode
-        const postcodeMatch = line.match(
-          /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
-        );
-        if (postcodeMatch) {
-          data.postcode = postcodeMatch[0].toUpperCase();
-          break;
-        }
-
-        addressLines.push(line);
       }
 
       // Items: quantity x product pattern
       if (line.match(/\d+\s?[xX]\s?.+/)) {
         data.items?.push(line);
       }
+
+      // Address lines: street keywords or starts with number
+      if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
+        addressLines.push(line);
+      }
     }
 
     if (addressLines.length > 0) {
-      data.address = addressLines.join(", ");
+      const fullAddress = addressLines.join(", ");
+      data.address = fullAddress;
 
-      // Door number: first line of address (could be numeric or text)
-      data.doorNumber = addressLines[0];
+      // Door number: first number at start of first address line
+      const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
+      if (doorMatch) data.doorNumber = doorMatch[0];
+
+      // Postcode: try to find anywhere in full address
+      const postcodeMatch = fullAddress.match(
+        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+      );
+      if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
     }
 
     return data;
   };
-
 
   return (
     <div className="p-4 max-w-md mx-auto">
