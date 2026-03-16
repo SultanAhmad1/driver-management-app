@@ -51,6 +51,7 @@ export default function ReceiptScanner() {
     }
   };
 
+  // test new pic
  const parseReceiptText = (text: string): ReceiptData => {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
   const data: ReceiptData = { items: [] };
