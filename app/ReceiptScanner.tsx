@@ -62,6 +62,12 @@ export default function ReceiptScanner() {
 
       const parsedData = parseReceiptText(ocrText);
       setReceiptData(parsedData);
+
+      setFormData((prevData) => ({
+        ...prevData,
+        doorNo: parsedData.doorNumber || "Not Found",
+        postcode: parsedData.postcode || "Not Found"
+      }))
     } catch (err) {
       console.error("OCR error:", err);
       alert("Failed to read receipt. Try again.");
