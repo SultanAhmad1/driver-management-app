@@ -21,99 +21,63 @@ export default function ReceiptScanner() {
   const [loading, setLoading] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
-   const [scanStatus, setScanStatus] = useState<"idle" | "valid" | "invalid">(
-    "idle"
+  const [scanStatus, setScanStatus] = useState<"idle" | "valid" | "invalid">("idle");
+  const [distanceMessage, setDistanceMessage] = useState(
+    "Place the receipt about 2–3 meters from the camera"
   );
 
-  const [distanceMessage, setDistanceMessage] = useState(
-  "Place the receipt about 2–3 meters from the camera"
-);
+  const processingRef = useRef(false);
 
-    const processingRef = useRef(false);
-
-//    const checkFrame = async () => {
-//   if (!webcamRef.current || processingRef.current) return;
-
-//   const frame = webcamRef.current.getScreenshot();
-//   if (!frame) return;
-
-//   processingRef.current = true;
-
-//   try {
-//     const result = await Tesseract.recognize(frame, "eng");
-//     const text = result.data.text;
-
-//     const doorMatch = text.match(/^\d+[A-Za-z]?/m);
-
-//     const postcodeMatch = text.match(
-//       /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
-//     );
-
-//     if (doorMatch && postcodeMatch) {
-//       setScanStatus("valid");
-//       setDistanceMessage("✅ Perfect distance — receipt readable");
-//     } else {
-//       setScanStatus("invalid");
-//       setDistanceMessage(
-//         "❌ Move receipt closer (recommended distance: 2–3 meters)"
-//       );
-//     }
-//   } catch (err) {
-//     setScanStatus("invalid");
-//     setDistanceMessage("❌ Unable to detect receipt — adjust distance (2–3m)");
-//   }
-
-//   processingRef.current = false;
-// };
-
-  // LIVE SCAN LOOP
-
+  // Live frame check
   const checkFrame = async () => {
-  if (!webcamRef.current || processingRef.current) return;
+    if (!webcamRef.current || processingRef.current) return;
+    const frame = webcamRef.current.getScreenshot();
+    if (!frame) return;
 
-  const frame = webcamRef.current.getScreenshot();
-  if (!frame) return;
+    processingRef.current = true;
 
-  processingRef.current = true;
+    try {
+      const result = await Tesseract.recognize(frame, "eng");
+      const text = result.data.text;
 
-  try {
-    const result = await Tesseract.recognize(frame, "eng");
-    const text = result.data.text;
+      // UK postcode detection
+      const postcodeMatch = text.match(/\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i);
 
-    // UK postcode
-    const postcodeMatch = text.match(
-      /\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i
-    );
+      // Name detection (first line with letters + space)
+      const nameMatch = text.split("\n").find(line => /^[A-Z][a-z]+\s[A-Z]/.test(line));
 
-    // Address indicators
-    const addressMatch = text.match(
-      /(street|road|lane|avenue|drive|court|close|way|hall|kitchen|restaurant|flat|apartment)/i
-    );
+      // Door/Location line (line immediately after name)
+      let doorLine = null;
+      if (nameMatch) {
+        const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+        const nameIndex = lines.indexOf(nameMatch);
+        if (lines[nameIndex + 1]) {
+          doorLine = lines[nameIndex + 1];
+        }
+      }
 
-    // Number in address
-    const numberMatch = text.match(/\b\d{1,4}\b/);
+      if (postcodeMatch && doorLine) {
+        setScanStatus("valid");
+        setDistanceMessage("✅ Perfect distance — receipt readable");
+      } else {
+        setScanStatus("invalid");
+        setDistanceMessage(
+          "❌ Move receipt closer (recommended distance: 2–3 meters)"
+        );
+      }
 
-    if (postcodeMatch && (addressMatch || numberMatch)) {
-      setScanStatus("valid");
-      setDistanceMessage("✅ Perfect distance — receipt readable");
-    } else {
+    } catch (err) {
       setScanStatus("invalid");
-      setDistanceMessage(
-        "❌ Move receipt closer (recommended distance: 20–40 cm)"
-      );
+      setDistanceMessage("❌ Unable to detect receipt — adjust distance");
     }
-  } catch (err) {
-    setScanStatus("invalid");
-    setDistanceMessage("❌ Unable to detect receipt — adjust distance");
-  }
 
-  processingRef.current = false;
-};
+    processingRef.current = false;
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       checkFrame();
-    }, 1500); // scan every 1.5 sec
-
+    }, 1500);
     return () => clearInterval(interval);
   }, []);
 
@@ -130,13 +94,9 @@ export default function ReceiptScanner() {
   const runOCR = async (src: string) => {
     setLoading(true);
     try {
-      const result = await Tesseract.recognize(src, "eng", {
-        logger: (m) => console.log(m), // logs progress
-      });
-
+      const result = await Tesseract.recognize(src, "eng");
       const ocrText = result.data.text;
       setText(ocrText);
-
       const parsedData = parseReceiptText(ocrText);
       setReceiptData(parsedData);
     } catch (err) {
@@ -148,53 +108,59 @@ export default function ReceiptScanner() {
   };
 
   const parseReceiptText = (text: string): ReceiptData => {
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
     const data: ReceiptData = { items: [] };
-    let addressLines: string[] = [];
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    // UK postcode regex
+    const postcodeRegex = /\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i;
+
+    // Name regex (first line with letters + space)
+    const nameRegex = /^[A-Z][a-z]+\s[A-Z]/;
+
+    let nameIndex = -1;
+    lines.forEach((line, i) => {
+      // Name
+      if (!data.name && nameRegex.test(line)) {
+        data.name = line;
+        nameIndex = i;
+      }
 
       // Total
       if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
         data.total = line.match(/£?\d+(\.\d{2})?/)![0];
       }
 
-      // Name: first line with letters + space
-      if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
-        data.name = line;
-      }
-
-      // Items: quantity x product pattern
+      // Items
       if (line.match(/\d+\s?[xX]\s?.+/)) {
         data.items?.push(line);
       }
+    });
 
-      // Address lines: street keywords or starts with number
-      if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
-        addressLines.push(line);
-      }
+    // Door/location = line after name
+    if (nameIndex !== -1 && lines[nameIndex + 1]) {
+      data.doorNumber = lines[nameIndex + 1];
     }
 
-    if (addressLines.length > 0) {
-      const fullAddress = addressLines.join(", ");
-      data.address = fullAddress;
+    // Postcode
+    const postcodeLine = lines.find(l => postcodeRegex.test(l));
+    if (postcodeLine) {
+      data.postcode = postcodeLine.match(postcodeRegex)![0].toUpperCase();
+    }
 
-      // Door number: first number at start of first address line
-      const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
-      if (doorMatch) data.doorNumber = doorMatch[0];
-
-      // Postcode: try to find anywhere in full address
-      const postcodeMatch = fullAddress.match(
-        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
-      );
-      if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
+    // Address = lines between doorNumber and postcode
+    if (data.doorNumber && data.postcode) {
+      const doorIdx = lines.indexOf(data.doorNumber);
+      const postcodeIdx = lines.indexOf(postcodeLine!);
+      if (doorIdx >= 0 && postcodeIdx > doorIdx) {
+        const addressLines = lines.slice(doorIdx, postcodeIdx);
+        data.address = addressLines.join(", ");
+      }
     }
 
     return data;
   };
 
-    const borderColor =
+  const borderColor =
     scanStatus === "valid"
       ? "border-green-500"
       : scanStatus === "invalid"
@@ -207,7 +173,6 @@ export default function ReceiptScanner() {
 
       {!image && (
         <div className="relative">
-
           <Webcam
             ref={webcamRef}
             screenshotFormat="image/jpeg"
@@ -228,8 +193,7 @@ export default function ReceiptScanner() {
         </div>
       )}
 
-
-         {!image && (
+      {!image && (
         <button
           onClick={capture}
           disabled={scanStatus !== "valid"}
@@ -241,28 +205,9 @@ export default function ReceiptScanner() {
         </button>
       )}
 
-         {scanStatus === "valid" && (
-          <>
-            <p className="text-green-600 font-semibold mt-2">
-              ✅ Receipt readable
-            </p>
-            <p className="text-center mt-2 text-sm font-medium">
-              {distanceMessage}
-            </p>
-          </>
-      )}
-
-      {scanStatus === "invalid" && (
-        <>
-          <p className="text-red-600 font-semibold mt-2">
-            ❌ Move receipt closer or improve lighting
-          </p>
-          <p className="text-center mt-2 text-sm font-medium">
-            {distanceMessage}
-          </p>
-        
-        </>
-      )}
+      <p className={`mt-2 text-center font-medium ${scanStatus === "valid" ? "text-green-600" : "text-red-600"}`}>
+        {distanceMessage}
+      </p>
 
       {image && (
         <div className="mt-4">
@@ -272,6 +217,8 @@ export default function ReceiptScanner() {
               setImage(null);
               setText("");
               setReceiptData(null);
+              setScanStatus("idle");
+              setDistanceMessage("Place the receipt about 2–3 meters from the camera");
             }}
             className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
           >
@@ -282,14 +229,13 @@ export default function ReceiptScanner() {
 
       {loading && <p className="mt-3">🧠 Reading receipt...</p>}
 
-      {/* Parsed data */}
+      {/* Parsed Data */}
       {receiptData && (
         <div className="mt-4 p-3 rounded border">
           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
           <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
+          <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
           <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
-          {/* <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p> */}
-          <p><strong>Door Number:</strong> {receiptData.doorNumber}</p>
           <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
           <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
           {receiptData.items && receiptData.items.length > 0 && (
