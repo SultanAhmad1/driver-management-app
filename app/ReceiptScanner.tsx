@@ -35,7 +35,7 @@ export default function ReceiptScanner() {
     setLoading(true);
     try {
       const result = await Tesseract.recognize(src, "eng", {
-        logger: (m) => console.log(m), // logs progress
+        logger: (m) => console.log(m),
       });
 
       const ocrText = result.data.text;
@@ -51,103 +51,70 @@ export default function ReceiptScanner() {
     }
   };
 
-  // const parseReceiptText = (text: string): ReceiptData => {
-  //   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  //   const data: ReceiptData = { items: [] };
-  //   let addressLines: string[] = [];
+  // Fix common OCR mistakes in numbers/postcodes
+  const fixOCRText = (str: string) => {
+    if (!str) return str;
+    return str
+      .replace(/0L/i, "OL")  // fix postcode
+      .replace(/l/g, "1")
+      .replace(/I/g, "1")
+      .replace(/O/g, "0")
+      .trim();
+  };
 
-  //   for (let i = 0; i < lines.length; i++) {
-  //     const line = lines[i];
+  const parseReceiptText = (text: string): ReceiptData => {
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const data: ReceiptData = { items: [] };
+    const addressLines: string[] = [];
 
-  //     // Total
-  //     if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
-  //       data.total = line.match(/£?\d+(\.\d{2})?/)![0];
-  //     }
+    for (const line of lines) {
+      const cleanedLine = fixOCRText(line);
 
-  //     // Name: first line with letters + space
-  //     if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
-  //       data.name = line;
-  //     }
+      // Total
+      if (!data.total && /£?\d+(\.\d{2})?/.test(cleanedLine)) {
+        const m = cleanedLine.match(/£?\d+(\.\d{2})?/);
+        if (m) data.total = m[0];
+      }
 
-  //     // Items: quantity x product pattern
-  //     if (line.match(/\d+\s?[xX]\s?.+/)) {
-  //       data.items?.push(line);
-  //     }
+      // Name
+      if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(cleanedLine)) {
+        data.name = cleanedLine;
+      }
 
-  //     // Address lines: street keywords or starts with number
-  //     if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
-  //       addressLines.push(line);
-  //     }
-  //   }
+      // Items
+      if (/\d+\s?[xX]\s?.+/.test(cleanedLine)) {
+        data.items?.push(cleanedLine);
+      }
 
-  //   if (addressLines.length > 0) {
-  //     const fullAddress = addressLines.join(", ");
-  //     data.address = fullAddress;
+      // Address lines: look for street keywords or numeric line (door)
+      if (
+        /(street|road|lane|avenue|ave|boulevard|blvd|canal)/i.test(cleanedLine) ||
+        /^\d+/.test(cleanedLine) ||
+        /^[A-Za-z]+\s[A-Za-z]+/.test(cleanedLine) // e.g., "Meadow hall"
+      ) {
+        addressLines.push(cleanedLine);
+      }
 
-  //     // Door number: first number at start of first address line
-  //     const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
-  //     if (doorMatch) data.doorNumber = doorMatch[0];
-
-  //     // Postcode: try to find anywhere in full address
-  //     const postcodeMatch = fullAddress.match(
-  //       /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
-  //     );
-  //     if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
-  //   }
-
-  //   return data;
-  // };
-
-  const fixNumberOCR = (str: string) => {
-  if (!str) return str;
-  return str
-    .replace(/O/g, "0")
-    .replace(/I/g, "1")
-    .replace(/l/g, "1")
-    .replace(/[^\d.]/g, "");
-};
-
-const parseReceiptText = (text: string): ReceiptData => {
-  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-  const data: ReceiptData = { items: [] };
-  const addressLines: string[] = [];
-
-  for (const line of lines) {
-    // Total
-    if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
-      const m = line.match(/£?\d+(\.\d{2})?/);
-      if (m) data.total = fixNumberOCR(m[0]);
+      // Postcode anywhere
+      if (!data.postcode) {
+        const postcodeMatch = cleanedLine.match(
+          /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+        );
+        if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
+      }
     }
 
-    // Name
-    if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
-      data.name = line;
+    if (addressLines.length) {
+      data.address = addressLines.join(", ");
+
+      // Door number: first numeric line or first address line
+      const door = addressLines.find((l) => /^\d+/.test(l)) || addressLines[0];
+      if (door) data.doorNumber = door.match(/^\d+[A-Za-z]?/)?.[0] || door;
     }
 
-    // Items
-    if (/\d+\s?[xX]\s?.+/.test(line)) {
-      data.items?.push(line);
-    }
+    return data;
+  };
 
-    // Address
-    if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
-      addressLines.push(line);
-    }
-  }
-
-  if (addressLines.length) {
-    data.address = addressLines.join(", ");
-    const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
-    if (doorMatch) data.doorNumber = fixNumberOCR(doorMatch[0]);
-
-    const postcodeMatch = addressLines.join(" ").match(
-      /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
-    );
-    if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
-  }
-
-  return data;
-};
   return (
     <div className="p-4 max-w-md mx-auto">
       <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
@@ -192,11 +159,11 @@ const parseReceiptText = (text: string): ReceiptData => {
 
       {/* Parsed data */}
       {receiptData && (
-        <div className="mt-4 p-3 rounded border">
+        <div className="mt-4 p-3 rounded border bg-gray-50">
           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
           <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
-          <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
           <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+          <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
           <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
           <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
           {receiptData.items && receiptData.items.length > 0 && (
