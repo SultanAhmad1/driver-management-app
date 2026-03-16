@@ -24,42 +24,91 @@ export default function ReceiptScanner() {
    const [scanStatus, setScanStatus] = useState<"idle" | "valid" | "invalid">(
     "idle"
   );
+
+  const [distanceMessage, setDistanceMessage] = useState(
+  "Place the receipt about 2–3 meters from the camera"
+);
+
     const processingRef = useRef(false);
 
-    const checkFrame = async () => {
-    if (!webcamRef.current || processingRef.current) return;
+//    const checkFrame = async () => {
+//   if (!webcamRef.current || processingRef.current) return;
 
-    const frame = webcamRef.current.getScreenshot();
+//   const frame = webcamRef.current.getScreenshot();
+//   if (!frame) return;
 
-    if (!frame) return;
+//   processingRef.current = true;
 
-    processingRef.current = true;
+//   try {
+//     const result = await Tesseract.recognize(frame, "eng");
+//     const text = result.data.text;
 
-    try {
-      const result = await Tesseract.recognize(frame, "eng");
+//     const doorMatch = text.match(/^\d+[A-Za-z]?/m);
 
-      const text = result.data.text;
+//     const postcodeMatch = text.match(
+//       /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+//     );
 
-      const doorMatch = text.match(/^\d+[A-Za-z]?/m);
+//     if (doorMatch && postcodeMatch) {
+//       setScanStatus("valid");
+//       setDistanceMessage("✅ Perfect distance — receipt readable");
+//     } else {
+//       setScanStatus("invalid");
+//       setDistanceMessage(
+//         "❌ Move receipt closer (recommended distance: 2–3 meters)"
+//       );
+//     }
+//   } catch (err) {
+//     setScanStatus("invalid");
+//     setDistanceMessage("❌ Unable to detect receipt — adjust distance (2–3m)");
+//   }
 
-      const postcodeMatch = text.match(
-        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
-      );
-
-      if (doorMatch && postcodeMatch) {
-        setScanStatus("valid");
-      } else {
-        setScanStatus("invalid");
-      }
-    } catch (err) {
-      setScanStatus("invalid");
-    }
-
-    processingRef.current = false;
-  };
+//   processingRef.current = false;
+// };
 
   // LIVE SCAN LOOP
 
+  const checkFrame = async () => {
+  if (!webcamRef.current || processingRef.current) return;
+
+  const frame = webcamRef.current.getScreenshot();
+  if (!frame) return;
+
+  processingRef.current = true;
+
+  try {
+    const result = await Tesseract.recognize(frame, "eng");
+    const text = result.data.text;
+
+    // UK postcode
+    const postcodeMatch = text.match(
+      /\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b/i
+    );
+
+    // Address indicators
+    const addressMatch = text.match(
+      /(street|road|lane|avenue|drive|court|close|way|hall|kitchen|restaurant|flat|apartment)/i
+    );
+
+    // Number in address
+    const numberMatch = text.match(/\b\d{1,4}\b/);
+
+    if (postcodeMatch && (addressMatch || numberMatch)) {
+      setScanStatus("valid");
+      setDistanceMessage("✅ Perfect distance — receipt readable");
+    } else {
+      setScanStatus("invalid");
+      setDistanceMessage(
+        "❌ Move receipt closer (recommended distance: 20–40 cm)"
+      );
+    }
+  } catch (err) {
+    setScanStatus("invalid");
+    setDistanceMessage("❌ Unable to detect receipt — adjust distance");
+  }
+
+  processingRef.current = false;
+};
   useEffect(() => {
     const interval = setInterval(() => {
       checkFrame();
@@ -193,15 +242,26 @@ export default function ReceiptScanner() {
       )}
 
          {scanStatus === "valid" && (
-        <p className="text-green-600 font-semibold mt-2">
-          ✅ Receipt readable
-        </p>
+          <>
+            <p className="text-green-600 font-semibold mt-2">
+              ✅ Receipt readable
+            </p>
+            <p className="text-center mt-2 text-sm font-medium">
+              {distanceMessage}
+            </p>
+          </>
       )}
 
       {scanStatus === "invalid" && (
-        <p className="text-red-600 font-semibold mt-2">
-          ❌ Move receipt closer or improve lighting
-        </p>
+        <>
+          <p className="text-red-600 font-semibold mt-2">
+            ❌ Move receipt closer or improve lighting
+          </p>
+          <p className="text-center mt-2 text-sm font-medium">
+            {distanceMessage}
+          </p>
+        
+        </>
       )}
 
       {image && (
@@ -230,7 +290,7 @@ export default function ReceiptScanner() {
           <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
           {/* <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p> */}
           <p><strong>Door Number:</strong> {receiptData.doorNumber}</p>
-          <p><strong>Postcode:</strong> {receiptData.postcode}</p>
+          <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
           <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
           {receiptData.items && receiptData.items.length > 0 && (
             <div>
