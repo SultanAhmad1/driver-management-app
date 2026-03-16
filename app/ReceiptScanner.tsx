@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import Webcam from "react-webcam";
 import Tesseract from "tesseract.js";
 
@@ -21,317 +21,152 @@ export default function ReceiptScanner() {
   const [loading, setLoading] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
-  const [distanceMessage, setDistanceMessage] = useState(
-    "Place receipt inside the box"
-  );
-  const [scanStatus, setScanStatus] = useState<"valid" | "invalid" | "idle">(
-    "idle"
-  );
-
-  /* ----------------------------
-     Camera distance guidance
-  -----------------------------*/
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const video = webcamRef.current?.video;
-
-      if (!video) return;
-
-      const width = video.videoWidth;
-      const height = video.videoHeight;
-
-      const area = width * height;
-
-      if (area < 200000) {
-        setDistanceMessage("⬇️ Move receipt closer");
-        setScanStatus("invalid");
-      } else if (area > 900000) {
-        setDistanceMessage("⬆️ Move receipt slightly away");
-        setScanStatus("invalid");
-      } else {
-        setDistanceMessage("✅ Perfect distance");
-        setScanStatus("valid");
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  /* ----------------------------
-     Capture photo
-  -----------------------------*/
-
   const capture = async () => {
     const screenshot = webcamRef.current?.getScreenshot();
-
     if (!screenshot) {
       alert("Camera not ready");
       return;
     }
-
     setImage(screenshot);
     runOCR(screenshot);
   };
 
-  /* ----------------------------
-     OCR processing
-  -----------------------------*/
-
   const runOCR = async (src: string) => {
     setLoading(true);
-
     try {
       const result = await Tesseract.recognize(src, "eng", {
-        logger: (m) => console.log(m),
+        logger: (m) => console.log(m), // logs progress
       });
 
       const ocrText = result.data.text;
-
       setText(ocrText);
 
-      const parsed = parseReceiptText(ocrText);
-
-      setReceiptData(parsed);
+      const parsedData = parseReceiptText(ocrText);
+      setReceiptData(parsedData);
     } catch (err) {
-      console.error(err);
-      alert("OCR failed");
+      console.error("OCR error:", err);
+      alert("Failed to read receipt. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ----------------------------
-     Receipt parser
-  -----------------------------*/
-
-   /* ----------------------------
-     Receipt parser
-  -----------------------------*/
-
   const parseReceiptText = (text: string): ReceiptData => {
-    const lines = text
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
     const data: ReceiptData = { items: [] };
+    let addressLines: string[] = [];
 
-    // UK Postcode Regex
-    const postcodeRegex = /\b[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}\b/i;
-    const streetKeywords = /(street|road|lane|avenue|drive|way|close|court|st|rd|ln|ave|dr|cl)/i;
-
-    let postcodeIndex = -1;
-
-    /* 1. Find Postcode */
     for (let i = 0; i < lines.length; i++) {
-      const fixed = lines[i].replace(/^0L/i, "OL"); // Common OCR error fix
-      const match = fixed.match(postcodeRegex);
-      if (match) {
-        data.postcode = match[0].toUpperCase();
-        postcodeIndex = i;
-        break;
-      }
-    }
+      const line = lines[i];
 
-    /* 2. Find Door Number or Building Name */
-    if (postcodeIndex > 0) {
-      // Look at the 3 lines directly above the postcode
-      const candidates = [
-        lines[postcodeIndex - 1],
-        lines[postcodeIndex - 2],
-        lines[postcodeIndex - 3],
-      ].filter(Boolean);
-
-      for (const c of candidates) {
-        // Regex for Type 1: Numeric (e.g., "133", "133A", "Flat 4")
-        const isNumericDoor = /^(\d+[A-Za-z]?|(flat|unit|suite)\s?\d+)$/i.test(c);
-        
-        // Regex for Type 2: Building Name (e.g., "Meadow Hall")
-        // This looks for 2 or more capitalized words, or a single word that isn't a street type
-        const isBuildingName = /^[A-Z][a-z]+(\s[A-Z][a-z]+)+$/.test(c);
-
-        if (isNumericDoor || isBuildingName) {
-          // Additional check: Don't pick it up if it's just the street name (e.g. "Meadow Road")
-          if (!streetKeywords.test(c)) {
-            data.doorNumber = c;
-            break;
-          }
-        }
-      }
-    }
-
-    /* 3. Extract rest of the info */
-    const addressLines: string[] = [];
-
-    for (const line of lines) {
-      // Capture street address
-      if (streetKeywords.test(line)) {
-        addressLines.push(line);
+      // Total
+      if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
+        data.total = line.match(/£?\d+(\.\d{2})?/)![0];
       }
 
-      // Capture Name (Look for Title Case words like "John Doe")
-      if (!data.name && /^[A-Z][a-z]+\s[A-Z][a-z]+/.test(line)) {
+      // Name: first line with letters + space
+      if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
         data.name = line;
       }
 
-      // Capture Total
-      if (!data.total && /[£$]\d+(\.\d{2})?/.test(line)) {
-        const match = line.match(/[£$]\d+(\.\d{2})?/);
-        if (match) data.total = match[0];
+      // Items: quantity x product pattern
+      if (line.match(/\d+\s?[xX]\s?.+/)) {
+        data.items?.push(line);
       }
 
-      // Capture Items (e.g. "1 x Pizza")
-      if (/\d+\s?[xX]\s?.+/.test(line)) {
-        data.items?.push(line);
+      // Address lines: street keywords or starts with number
+      if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
+        addressLines.push(line);
       }
     }
 
     if (addressLines.length > 0) {
-      data.address = addressLines.join(", ");
+      const fullAddress = addressLines.join(", ");
+      data.address = fullAddress;
+
+      // Door number: first number at start of first address line
+      const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
+      if (doorMatch) data.doorNumber = doorMatch[0];
+
+      // Postcode: try to find anywhere in full address
+      const postcodeMatch = fullAddress.match(
+        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+      );
+      if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
     }
 
     return data;
   };
 
-
-  /* ----------------------------
-     UI
-  -----------------------------*/
-
   return (
-    <div className="max-w-md mx-auto p-4">
-
-      <h2 className="text-xl font-bold mb-4">
-        Driver Receipt Scanner
-      </h2>
+    <div className="p-4 max-w-md mx-auto">
+      <h2 className="text-xl font-bold mb-3">Receipt Scanner old check</h2>
 
       {!image && (
-        <div className="relative">
-
-          <Webcam
-            ref={webcamRef}
-            screenshotFormat="image/jpeg"
-            audio={false}
-            width={350}
-            mirrored={false}
-            videoConstraints={{
-              facingMode: "environment",
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-            }}
-          />
-
-          {/* Scanner box */}
-
-          <div
-            className={`absolute top-12 left-6 right-6 bottom-12 border-4 rounded-lg flex items-center justify-center
-            ${
-              scanStatus === "valid"
-                ? "border-green-500"
-                : "border-red-500"
-            }`}
-          >
-            <p className="bg-black/60 text-white px-3 py-1 rounded text-sm">
-              {distanceMessage}
-            </p>
-          </div>
-        </div>
+        <Webcam
+          ref={webcamRef}
+          screenshotFormat="image/jpeg"
+          audio={false}
+          width={350}
+          mirrored={false}
+          videoConstraints={{ facingMode: "environment" }}
+        />
       )}
 
       {!image && (
         <button
           onClick={capture}
-          className="mt-4 w-full bg-blue-600 text-white py-2 rounded"
+          className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
         >
-          Take Snapshot
+          Take Photo
         </button>
       )}
 
       {image && (
         <div className="mt-4">
-
-          <img
-            src={image}
-            className="rounded border"
-          />
-
+          <img src={image} className="rounded border" />
           <button
             onClick={() => {
               setImage(null);
               setText("");
               setReceiptData(null);
             }}
-            className="mt-3 w-full bg-gray-500 text-white py-2 rounded"
+            className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
           >
             Retake
           </button>
         </div>
       )}
 
-      {loading && (
-        <p className="mt-3 text-center">
-          🧠 Reading receipt...
-        </p>
-      )}
+      {loading && <p className="mt-3">🧠 Reading receipt...</p>}
 
       {/* Parsed data */}
-
       {receiptData && (
-        <div className="mt-5 border rounded p-3 bg-gray-50">
-
-          <h3 className="font-semibold mb-2">
-            Parsed Receipt
-          </h3>
-
-          <p>
-            <strong>Name:</strong>{" "}
-            {receiptData.name || "Not found"}
-          </p>
-
-          <p>
-            <strong>Door Number:</strong>{" "}
-            {receiptData.doorNumber || "Not found"}
-          </p>
-
-          <p>
-            <strong>Postcode:</strong>{" "}
-            {receiptData.postcode || "Not found"}
-          </p>
-
-          <p>
-            <strong>Address:</strong>{" "}
-            {receiptData.address || "Not found"}
-          </p>
-
-          <p>
-            <strong>Total:</strong>{" "}
-            {receiptData.total || "Not found"}
-          </p>
-
-          {receiptData.items &&
-            receiptData.items.length > 0 && (
-              <ul className="list-disc ml-5 mt-2">
+        <div className="mt-4 p-3 rounded border">
+          <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
+          <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
+          <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
+          <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+          <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
+          <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
+          {receiptData.items && receiptData.items.length > 0 && (
+            <div>
+              <strong>Items:</strong>
+              <ul className="list-disc ml-5">
                 {receiptData.items.map((item, i) => (
                   <li key={i}>{item}</li>
                 ))}
               </ul>
-            )}
+            </div>
+          )}
         </div>
       )}
 
       {/* Full OCR text */}
-
       {text && (
-        <div className="mt-5 bg-gray-100 p-3 rounded text-sm">
-
-          <h3 className="font-semibold mb-2">
-            Full OCR Text
-          </h3>
-
-          <pre className="whitespace-pre-wrap">
-            {text}
-          </pre>
+        <div className="mt-4 bg-gray-50 p-3 rounded">
+          <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
+          <pre className="whitespace-pre-wrap text-sm">{text}</pre>
         </div>
       )}
     </div>
