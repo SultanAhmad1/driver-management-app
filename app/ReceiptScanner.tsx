@@ -213,8 +213,8 @@ export default function ReceiptScanner() {
 
         {
           optionSelected === 1 &&
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" >
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" >
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
               
               {/* Modal Header */}
               <div className="flex justify-between items-center border-b px-4 py-3">
@@ -225,7 +225,7 @@ export default function ReceiptScanner() {
               </div>
 
               {/* Modal Body */}
-              <div className=" overflow-h p-4 max-w-md mx-auto" style={{minHeight: "10vh"}}>
+              <div className="p-4 overflow-y-auto flex-1">
                 <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
           
                 {!image && (
@@ -271,11 +271,11 @@ export default function ReceiptScanner() {
                   <div className="mt-4 p-3 rounded border">
                     <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
                     <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
-                    <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
+                    {/* <p><strong>Address:</strong> {receiptData.address || "Not found"}</p> */}
                     <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
                     <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
-                    <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
-                    {receiptData.items && receiptData.items.length > 0 && (
+                    {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
+                    {/* {receiptData.items && receiptData.items.length > 0 && (
                       <div>
                         <strong>Items:</strong>
                         <ul className="list-disc ml-5">
@@ -284,17 +284,17 @@ export default function ReceiptScanner() {
                           ))}
                         </ul>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )}
           
                 {/* Full OCR text */}
-                {text && (
+                {/* {text && (
                   <div className="mt-4 bg-gray-50 p-3 rounded">
                     <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
                     <pre className="whitespace-pre-wrap text-sm">{text}</pre>
                   </div>
-                )}
+                )} */}
               </div>
 
               {/* Modal Footer */}
