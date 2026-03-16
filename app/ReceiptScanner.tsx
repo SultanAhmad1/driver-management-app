@@ -51,93 +51,56 @@ export default function ReceiptScanner() {
     }
   };
 
+  const parseReceiptText = (text: string): ReceiptData => {
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const data: ReceiptData = { items: [] };
+    let addressLines: string[] = [];
 
- const parseReceiptText = (text: string): ReceiptData => {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
 
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+      // Total
+      if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
+        data.total = line.match(/£?\d+(\.\d{2})?/)![0];
+      }
 
-  const data: ReceiptData = { items: [] };
+      // Name: first line with letters + space
+      if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
+        data.name = line;
+      }
 
-  const postcodeRegex =
-    /\b[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}\b/i;
+      // Items: quantity x product pattern
+      if (line.match(/\d+\s?[xX]\s?.+/)) {
+        data.items?.push(line);
+      }
 
-  const streetRegex =
-    /(street|road|lane|avenue|drive|way|close|court|crescent|park|hall)/i;
-
-  let postcodeIndex = -1;
-
-  /* -------- find postcode -------- */
-
-  for (let i = 0; i < lines.length; i++) {
-
-    const postcodeMatch = lines[i].match(postcodeRegex);
-
-    if (postcodeMatch) {
-      data.postcode = postcodeMatch[0].toUpperCase();
-      postcodeIndex = i;
-      break;
-    }
-  }
-
-  /* -------- detect door / building -------- */
-
-  if (postcodeIndex > 0) {
-
-    const candidate1 = lines[postcodeIndex - 1];
-    const candidate2 = lines[postcodeIndex - 2];
-
-    const doorRegex = /^\d+[A-Za-z]?$/; // 133, 21A
-
-    const buildingRegex =
-      /(hall|house|court|flat|apartment|building|lodge|cottage)/i;
-
-    if (doorRegex.test(candidate1) || buildingRegex.test(candidate1)) {
-      data.doorNumber = candidate1;
-    }
-    else if (candidate2) {
-      data.doorNumber = candidate2;
-    }
-  }
-
-  /* -------- detect street / address -------- */
-
-  const addressLines: string[] = [];
-
-  for (const line of lines) {
-
-    if (streetRegex.test(line)) {
-      addressLines.push(line);
+      // Address lines: street keywords or starts with number
+      if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
+        addressLines.push(line);
+      }
     }
 
-    // detect items
-    if (/\d+\s?[xX]\s?.+/.test(line)) {
-      data.items?.push(line);
+    if (addressLines.length > 0) {
+      const fullAddress = addressLines.join(", ");
+      data.address = fullAddress;
+
+      // Door number: first number at start of first address line
+      const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
+      if (doorMatch) data.doorNumber = doorMatch[0];
+
+      // Postcode: try to find anywhere in full address
+      const postcodeMatch = fullAddress.match(
+        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+      );
+      if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
     }
 
-    // detect name
-    if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
-      data.name = line;
-    }
-
-    // detect total
-    if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
-      data.total = line.match(/£?\d+(\.\d{2})?/)![0];
-    }
-  }
-
-  if (addressLines.length > 0) {
-    data.address = addressLines.join(", ");
-  }
-
-  return data;
-};
+    return data;
+  };
 
   return (
     <div className="p-4 max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-3">Receipt Scanner 123</h2>
+      <h2 className="text-xl font-bold mb-3">Receipt Scanner - early</h2>
 
       {!image && (
         <Webcam
