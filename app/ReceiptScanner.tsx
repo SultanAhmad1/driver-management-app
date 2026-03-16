@@ -137,7 +137,7 @@ export default function ReceiptScanner() {
 
   return (
     <div className="p-4 max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+      <h2 className="text-xl font-bold mb-3">Receipt Scanner 123</h2>
 
       {!image && (
         <Webcam
