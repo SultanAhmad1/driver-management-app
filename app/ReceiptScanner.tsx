@@ -51,71 +51,66 @@ export default function ReceiptScanner() {
     }
   };
 
-   const parseReceiptText = (text: string): ReceiptData => {
+  const parseReceiptText = (text: string): ReceiptData => {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
     const data: ReceiptData = { items: [] };
     let addressLines: string[] = [];
 
-    const streetKeywords = /(street|road|lane|ave|boulevard|blvd|drive|close|court|st|rd|ln|dr|cl)/i;
-    const postcodeRegex = /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i;
+    // Flag to detect when address starts (after customer name)
+    let foundName = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // 1. Total
+      // Total
       if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
-        const totalMatch = line.match(/£?\d+(\.\d{2})?/);
-        if (totalMatch) data.total = totalMatch[0];
+        data.total = line.match(/£?\d+(\.\d{2})?/)![0];
       }
 
-      // 2. Name (Title Case logic)
+      // Name: first line with letters + space
       if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
         data.name = line;
+        foundName = true;
+        continue;
       }
 
-      // 3. Items
+      // After name, any line until postcode is considered address
+      if (foundName) {
+        // Skip phone numbers
+        if (/^Tel:/.test(line)) continue;
+
+        // Stop address collection if line contains postcode
+        const postcodeMatch = line.match(
+          /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+        );
+        if (postcodeMatch) {
+          data.postcode = postcodeMatch[0].toUpperCase();
+          break;
+        }
+
+        addressLines.push(line);
+      }
+
+      // Items: quantity x product pattern
       if (line.match(/\d+\s?[xX]\s?.+/)) {
         data.items?.push(line);
-      }
-
-      // 4. Postcode (Found early to help locate door info)
-      const pcMatch = line.match(postcodeRegex);
-      if (!data.postcode && pcMatch) {
-        data.postcode = pcMatch[0].toUpperCase();
-      }
-
-      // 5. Build Address List
-      if (streetKeywords.test(line) || /^\d+/.test(line) || pcMatch) {
-        addressLines.push(line);
       }
     }
 
     if (addressLines.length > 0) {
       data.address = addressLines.join(", ");
 
-      /* --- UPDATED DOOR NUMBER LOGIC --- */
-      // Look for Type 1: Starts with a number (133)
-      // OR Type 2: Two Capitalized Words (Meadow Hall) that aren't the street name
-      const firstLine = addressLines[0];
-      const numericMatch = firstLine.match(/^\d+[A-Za-z]?/);
-      const namedMatch = firstLine.match(/^[A-Z][a-z]+\s[A-Z][a-z]+/);
-
-      if (numericMatch) {
-        data.doorNumber = numericMatch[0];
-      } else if (namedMatch && !streetKeywords.test(firstLine)) {
-        // Only take the name if it's not actually the street (e.g., "Meadow Road")
-        data.doorNumber = namedMatch[0];
-      }
+      // Door number: first line of address (could be numeric or text)
+      data.doorNumber = addressLines[0];
     }
 
     return data;
   };
 
 
-
   return (
     <div className="p-4 max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-3">Receipt Scanner old check</h2>
+      <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
 
       {!image && (
         <Webcam
