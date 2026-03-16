@@ -39,6 +39,7 @@ export default function ReceiptScanner() {
     fullAddress: "",
     orderNo: "",
   })
+  
   const capture = async () => {
     const screenshot = webcamRef.current?.getScreenshot();
     if (!screenshot) {
@@ -348,8 +349,6 @@ export default function ReceiptScanner() {
 
         </form>
       </div>
-
-     
     </>
   );
 }
