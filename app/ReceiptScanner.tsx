@@ -52,59 +52,61 @@ export default function ReceiptScanner() {
   };
 
   // test new pic
- const parseReceiptText = (text: string): ReceiptData => {
+  const parseReceiptText = (text: string): ReceiptData => {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
   const data: ReceiptData = { items: [] };
-
   let addressLines: string[] = [];
+
+  // Flag to detect when address starts (after customer name)
   let foundName = false;
-  let doorNumberCaptured = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // TOTAL
+    // Total
     if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
       data.total = line.match(/£?\d+(\.\d{2})?/)![0];
     }
 
-    // NAME: first line with letters + space
-    if (!foundName && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
+    // Name: first line with letters + space
+    if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
       data.name = line;
       foundName = true;
-      continue; // next line may be door/building
-    }
-
-    // DOOR NUMBER / BUILDING NAME: first line after name and before street keywords
-    if (foundName && !doorNumberCaptured && !/(street|road|lane|ave|boulevard|blvd|alley|drive|court|close|way)/i.test(line)) {
-      data.doorNumber = line;
-      doorNumberCaptured = true;
       continue;
     }
 
-    // ADDRESS LINES: look for street keywords or numbers
-    if (/(street|road|lane|ave|boulevard|blvd|alley|drive|court|close|way)/i.test(line) || /^\d+/.test(line)) {
+    // After name, any line until postcode is considered address
+    if (foundName) {
+      // Skip phone numbers
+      if (/^Tel:/.test(line)) continue;
+
+      // Stop address collection if line contains postcode
+      const postcodeMatch = line.match(
+        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+      );
+      if (postcodeMatch) {
+        data.postcode = postcodeMatch[0].toUpperCase();
+        break;
+      }
+
       addressLines.push(line);
     }
 
-    // ITEMS
+    // Items: quantity x product pattern
     if (line.match(/\d+\s?[xX]\s?.+/)) {
       data.items?.push(line);
-    }
-
-    // POSTCODE: any line matching UK postcode pattern
-    const postcodeMatch = line.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i);
-    if (postcodeMatch) {
-      data.postcode = postcodeMatch[0].toUpperCase();
     }
   }
 
   if (addressLines.length > 0) {
     data.address = addressLines.join(", ");
+
+    // Door number: first line of address (could be numeric or text)
+    data.doorNumber = addressLines[0];
   }
 
   return data;
-};
+  };
 
   return (
     <div className="p-4 max-w-md mx-auto">
