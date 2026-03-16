@@ -13,6 +13,15 @@ type ReceiptData = {
   items?: string[];
 };
 
+type FormData = {
+  locationId: string | null,
+  partnerId: string | null,
+  postcode: string,
+  doorNo: string,
+  fullAddress: string,
+  orderNo: string,
+}
+
 export default function ReceiptScanner() {
   const webcamRef = useRef<Webcam | null>(null);
 
@@ -21,6 +30,15 @@ export default function ReceiptScanner() {
   const [loading, setLoading] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
+  const [optionSelected, setOptionSelected] = useState(0)
+  const [formData, setFormData] = useState<FormData>({
+    locationId: null,
+    partnerId: null,
+    doorNo: "",
+    postcode: "",
+    fullAddress: "",
+    orderNo: "",
+  })
   const capture = async () => {
     const screenshot = webcamRef.current?.getScreenshot();
     if (!screenshot) {
@@ -43,6 +61,13 @@ export default function ReceiptScanner() {
 
       const parsedData = parseReceiptText(ocrText);
       setReceiptData(parsedData);
+
+      setFormData((prevData) => ({
+        ...prevData,
+        doorNo: parsedData?.doorNumber || "Not found",
+        postcode: parsedData?.postcode || "Not found",
+      }))
+
     } catch (err) {
       console.error("OCR error:", err);
       alert("Failed to read receipt. Try again.");
@@ -109,76 +134,223 @@ export default function ReceiptScanner() {
   };
 
   return (
-    <div className="p-4 max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+    <>
+      <div className="max-w-3xl mx-auto p-6 bg-white rounded shadow-md">
+        <h1 className="text-2xl font-bold mb-6 text-center">Driver Delivery Management System</h1>
 
-      {!image && (
-        <Webcam
-          ref={webcamRef}
-          screenshotFormat="image/jpeg"
-          audio={false}
-          width={350}
-          mirrored={false}
-          videoConstraints={{ facingMode: "environment" }}
-        />
-      )}
+        <form className="space-y-6">
 
-      {!image && (
-        <button
-          onClick={capture}
-          className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          Take Photo
-        </button>
-      )}
+          {/* Location Group */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Location</label>
+            <select className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>Select Location</option>
+              <option>Location 1</option>
+              <option>Location 2</option>
+              <option>Location 3</option>
+            </select>
+          </div>
 
-      {image && (
-        <div className="mt-4">
-          <img src={image} className="rounded border" />
-          <button
-            onClick={() => {
-              setImage(null);
-              setText("");
-              setReceiptData(null);
-            }}
-            className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
-          >
-            Retake
-          </button>
-        </div>
-      )}
+          {/* Partner Group */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Partner</label>
+            <select className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>Select Partner</option>
+              <option>Partner A</option>
+              <option>Partner B</option>
+              <option>Partner C</option>
+            </select>
+          </div>
 
-      {loading && <p className="mt-3">🧠 Reading receipt...</p>}
+          {/* Option Buttons */}
+          <div className="flex gap-4">
+            <button type="button" className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onClick={() => setOptionSelected(1)}>
+              Take Snap
+            </button>
+            <button type="button" className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400" onClick={() => setOptionSelected(2)}>
+              Manual
+            </button>
+          </div>
 
-      {/* Parsed data */}
-      {receiptData && (
-        <div className="mt-4 p-3 rounded border">
-          <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
-          <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
-          <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
-          <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
-          <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
-          <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
-          {receiptData.items && receiptData.items.length > 0 && (
-            <div>
-              <strong>Items:</strong>
-              <ul className="list-disc ml-5">
-                {receiptData.items.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
+          {
+            optionSelected === 2 &&
+            <>
+              {/* Door Number */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Door Number</label>
+                <input
+                  type="text"
+                  placeholder="Enter Door Number"
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.doorNo}
+                  onChange={(e) => setFormData((prevData) => ({...prevData, doorNo: e.target.value}))}
+                />
+              </div>
+
+              {/* Postcode with Search */}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-2">Postcode</label>
+                  <input
+                    type="text"
+                    placeholder="Enter Postcode"
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.postcode}
+                    onChange={(e) => setFormData((prevData) => ({...prevData, postcode: e.target.value}))}
+                  />
+                </div>
+                <button type="button" className="self-end bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                  Search
+                </button>
+              </div>
+
+              {/* Full Address */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Full Address</label>
+                <input
+                  type="text"
+                  placeholder="Full Address"
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.fullAddress}
+                  onChange={(e) => setFormData((prevData) => ({...prevData, postcode: e.target.value}))}
+                />
+              </div>
+            </>
+          }
+
+          {
+            optionSelected === 1 &&
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+                
+                {/* Modal Header */}
+                <div className="flex justify-between items-center border-b px-4 py-3">
+                  <h3 className="text-lg font-semibold">Modal Title</h3>
+                  <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
+                    ✕
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-4 space-y-4">
+                   <div className="p-4 max-w-md mx-auto">
+                <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+
+                {!image && (
+                  <Webcam
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    audio={false}
+                    width={350}
+                    mirrored={false}
+                    videoConstraints={{ facingMode: "environment" }}
+                  />
+                )}
+
+                {!image && (
+                  <button
+                    onClick={capture}
+                    className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                  >
+                    Take Photo
+                  </button>
+                )}
+
+                {image && (
+                  <div className="mt-4">
+                    <img src={image} className="rounded border" />
+                    <button
+                      onClick={() => {
+                        setImage(null);
+                        setText("");
+                        setReceiptData(null);
+                      }}
+                      className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
+                    >
+                      Retake
+                    </button>
+                  </div>
+                )}
+
+                {loading && <p className="mt-3">🧠 Reading receipt...</p>}
+
+                {/* Parsed data */}
+                {receiptData && (
+                  <div className="mt-4 p-3 rounded border">
+                    <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
+                    <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
+                    <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
+                    <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+                    <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
+                    {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
+                    {/* {receiptData.items && receiptData.items.length > 0 && (
+                      <div>
+                        <strong>Items:</strong>
+                        <ul className="list-disc ml-5">
+                          {receiptData.items.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )} */}
+                  </div>
+                )}
+
+                {/* Full OCR text */}
+                {/* {text && (
+                  <div className="mt-4 bg-gray-50 p-3 rounded">
+                    <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
+                    <pre className="whitespace-pre-wrap text-sm">{text}</pre>
+                  </div>
+                )} */}
+              </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex justify-end gap-2 border-t px-4 py-3">
+                  <button
+                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                    onClick={() => setOptionSelected(0)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={() => setOptionSelected(2)}
+                  >
+                    Save
+                  </button>
+                </div>
+
+              </div>
             </div>
-          )}
-        </div>
-      )}
+             
+          }
 
-      {/* Full OCR text */}
-      {text && (
-        <div className="mt-4 bg-gray-50 p-3 rounded">
-          <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
-          <pre className="whitespace-pre-wrap text-sm">{text}</pre>
-        </div>
-      )}
-    </div>
+          {/* Order Number */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Order No</label>
+            <input
+              type="text"
+              placeholder="Enter Order Number"
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <div className="text-center">
+            <button
+              type="submit"
+              className="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700"
+            >
+              Submit
+            </button>
+          </div>
+
+        </form>
+      </div>
+
+     
+    </>
   );
 }
