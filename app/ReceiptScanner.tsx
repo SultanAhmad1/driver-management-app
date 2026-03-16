@@ -247,63 +247,63 @@ export default function ReceiptScanner() {
                       />
                     )}
 
-                    {!image && (
-                      <button
-                        onClick={capture}
-                        className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-                      >
-                        Take Photo
-                      </button>
-                    )}
+                  {!image && (
+                    <button
+                      onClick={capture}
+                      className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                    >
+                      Take Photo
+                    </button>
+                  )}
 
-                    {image && (
-                      <div className="mt-4">
-                        <img src={image} className="rounded border" />
-                        <button
-                          onClick={() => {
-                            setImage(null);
-                            setText("");
-                            setReceiptData(null);
-                          }}
-                          className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
-                        >
-                          Retake
-                        </button>
-                      </div>
-                    )}
+                {image && (
+                  <div className="mt-4">
+                    <img src={image} className="rounded border" />
+                    <button
+                      onClick={() => {
+                        setImage(null);
+                        setText("");
+                        setReceiptData(null);
+                      }}
+                      className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
+                    >
+                      Retake
+                    </button>
+                  </div>
+                )}
 
-                    {loading && <p className="mt-3">🧠 Reading receipt...</p>}
+                {loading && <p className="mt-3">🧠 Reading receipt...</p>}
 
-                    {/* Parsed data */}
-                    {receiptData && (
-                      <div className="mt-4 p-3 rounded border">
-                        <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
-                        <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
-                        <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
-                        <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
-                        <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
-                        {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
-                        {/* {receiptData.items && receiptData.items.length > 0 && (
-                          <div>
-                            <strong>Items:</strong>
-                            <ul className="list-disc ml-5">
-                              {receiptData.items.map((item, i) => (
-                                <li key={i}>{item}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )} */}
-                      </div>
-                    )}
-
-                    {/* Full OCR text */}
-                    {/* {text && (
-                      <div className="mt-4 bg-gray-50 p-3 rounded">
-                        <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
-                        <pre className="whitespace-pre-wrap text-sm">{text}</pre>
+                {/* Parsed data */}
+                {receiptData && (
+                  <div className="mt-4 p-3 rounded border">
+                    <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
+                    <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
+                    <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
+                    <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+                    <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
+                    {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
+                    {/* {receiptData.items && receiptData.items.length > 0 && (
+                      <div>
+                        <strong>Items:</strong>
+                        <ul className="list-disc ml-5">
+                          {receiptData.items.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
                       </div>
                     )} */}
                   </div>
+                )}
+
+                {/* Full OCR text */}
+                {/* {text && (
+                  <div className="mt-4 bg-gray-50 p-3 rounded">
+                    <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
+                    <pre className="whitespace-pre-wrap text-sm">{text}</pre>
+                  </div>
+                )} */}
+              </div>
                 </div>
 
                 {/* Modal Footer */}
@@ -324,7 +324,6 @@ export default function ReceiptScanner() {
 
               </div>
             </div>
-
           }
 
           {/* Order Number */}
