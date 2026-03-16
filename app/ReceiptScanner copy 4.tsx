@@ -164,7 +164,7 @@ export default function ReceiptScanner() {
         {/* Option Buttons */}
         <div className="flex gap-4">
           <button type="button" className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onClick={() => setOptionSelected(1)}>
-            Take Snap 23
+            Take Snap
           </button>
           <button type="button" className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400" onClick={() => setOptionSelected(2)}>
             Manual
@@ -324,7 +324,7 @@ export default function ReceiptScanner() {
             
         }
 
-        {/* Order Number 1*/}
+        {/* Order Number */}
         <div>
           <label className="block text-sm font-medium mb-2">Order No</label>
           <input
