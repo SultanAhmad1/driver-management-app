@@ -51,53 +51,103 @@ export default function ReceiptScanner() {
     }
   };
 
-  const parseReceiptText = (text: string): ReceiptData => {
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    const data: ReceiptData = { items: [] };
-    let addressLines: string[] = [];
+  // const parseReceiptText = (text: string): ReceiptData => {
+  //   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  //   const data: ReceiptData = { items: [] };
+  //   let addressLines: string[] = [];
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+  //   for (let i = 0; i < lines.length; i++) {
+  //     const line = lines[i];
 
-      // Total
-      if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
-        data.total = line.match(/£?\d+(\.\d{2})?/)![0];
-      }
+  //     // Total
+  //     if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
+  //       data.total = line.match(/£?\d+(\.\d{2})?/)![0];
+  //     }
 
-      // Name: first line with letters + space
-      if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
-        data.name = line;
-      }
+  //     // Name: first line with letters + space
+  //     if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
+  //       data.name = line;
+  //     }
 
-      // Items: quantity x product pattern
-      if (line.match(/\d+\s?[xX]\s?.+/)) {
-        data.items?.push(line);
-      }
+  //     // Items: quantity x product pattern
+  //     if (line.match(/\d+\s?[xX]\s?.+/)) {
+  //       data.items?.push(line);
+  //     }
 
-      // Address lines: street keywords or starts with number
-      if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
-        addressLines.push(line);
-      }
+  //     // Address lines: street keywords or starts with number
+  //     if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
+  //       addressLines.push(line);
+  //     }
+  //   }
+
+  //   if (addressLines.length > 0) {
+  //     const fullAddress = addressLines.join(", ");
+  //     data.address = fullAddress;
+
+  //     // Door number: first number at start of first address line
+  //     const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
+  //     if (doorMatch) data.doorNumber = doorMatch[0];
+
+  //     // Postcode: try to find anywhere in full address
+  //     const postcodeMatch = fullAddress.match(
+  //       /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+  //     );
+  //     if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
+  //   }
+
+  //   return data;
+  // };
+
+  const fixNumberOCR = (str: string) => {
+  if (!str) return str;
+  return str
+    .replace(/O/g, "0")
+    .replace(/I/g, "1")
+    .replace(/l/g, "1")
+    .replace(/[^\d.]/g, "");
+};
+
+const parseReceiptText = (text: string): ReceiptData => {
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const data: ReceiptData = { items: [] };
+  const addressLines: string[] = [];
+
+  for (const line of lines) {
+    // Total
+    if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
+      const m = line.match(/£?\d+(\.\d{2})?/);
+      if (m) data.total = fixNumberOCR(m[0]);
     }
 
-    if (addressLines.length > 0) {
-      const fullAddress = addressLines.join(", ");
-      data.address = fullAddress;
-
-      // Door number: first number at start of first address line
-      const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
-      if (doorMatch) data.doorNumber = doorMatch[0];
-
-      // Postcode: try to find anywhere in full address
-      const postcodeMatch = fullAddress.match(
-        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
-      );
-      if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
+    // Name
+    if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
+      data.name = line;
     }
 
-    return data;
-  };
+    // Items
+    if (/\d+\s?[xX]\s?.+/.test(line)) {
+      data.items?.push(line);
+    }
 
+    // Address
+    if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
+      addressLines.push(line);
+    }
+  }
+
+  if (addressLines.length) {
+    data.address = addressLines.join(", ");
+    const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
+    if (doorMatch) data.doorNumber = fixNumberOCR(doorMatch[0]);
+
+    const postcodeMatch = addressLines.join(" ").match(
+      /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
+    );
+    if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
+  }
+
+  return data;
+};
   return (
     <div className="p-4 max-w-md mx-auto">
       <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>

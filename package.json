@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "next": "16.1.6",
+    "opencv.js": "^1.2.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-webcam": "^7.2.0",
