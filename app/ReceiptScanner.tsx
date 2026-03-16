@@ -51,52 +51,59 @@ export default function ReceiptScanner() {
     }
   };
 
-  const parseReceiptText = (text: string): ReceiptData => {
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    const data: ReceiptData = { items: [] };
-    let addressLines: string[] = [];
+ const parseReceiptText = (text: string): ReceiptData => {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const data: ReceiptData = { items: [] };
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+  let addressLines: string[] = [];
+  let foundName = false;
+  let doorNumberCaptured = false;
 
-      // Total
-      if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
-        data.total = line.match(/£?\d+(\.\d{2})?/)![0];
-      }
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
 
-      // Name: first line with letters + space
-      if (!data.name && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
-        data.name = line;
-      }
-
-      // Items: quantity x product pattern
-      if (line.match(/\d+\s?[xX]\s?.+/)) {
-        data.items?.push(line);
-      }
-
-      // Address lines: street keywords or starts with number
-      if (/(street|road|lane|ave|boulevard|blvd)/i.test(line) || /^\d+/.test(line)) {
-        addressLines.push(line);
-      }
+    // TOTAL
+    if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
+      data.total = line.match(/£?\d+(\.\d{2})?/)![0];
     }
 
-    if (addressLines.length > 0) {
-      const fullAddress = addressLines.join(", ");
-      data.address = fullAddress;
-
-      // Door number: first number at start of first address line
-      const doorMatch = addressLines[0].match(/^\d+[A-Za-z]?/);
-      if (doorMatch) data.doorNumber = doorMatch[0];
-
-      // Postcode: try to find anywhere in full address
-      const postcodeMatch = fullAddress.match(
-        /([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i
-      );
-      if (postcodeMatch) data.postcode = postcodeMatch[0].toUpperCase();
+    // NAME: first line with letters + space
+    if (!foundName && /^[A-Z][a-z]+\s[A-Z]/.test(line)) {
+      data.name = line;
+      foundName = true;
+      continue; // next line may be door/building
     }
 
-    return data;
-  };
+    // DOOR NUMBER / BUILDING NAME: first line after name and before street keywords
+    if (foundName && !doorNumberCaptured && !/(street|road|lane|ave|boulevard|blvd|alley|drive|court|close|way)/i.test(line)) {
+      data.doorNumber = line;
+      doorNumberCaptured = true;
+      continue;
+    }
+
+    // ADDRESS LINES: look for street keywords or numbers
+    if (/(street|road|lane|ave|boulevard|blvd|alley|drive|court|close|way)/i.test(line) || /^\d+/.test(line)) {
+      addressLines.push(line);
+    }
+
+    // ITEMS
+    if (line.match(/\d+\s?[xX]\s?.+/)) {
+      data.items?.push(line);
+    }
+
+    // POSTCODE: any line matching UK postcode pattern
+    const postcodeMatch = line.match(/([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2})/i);
+    if (postcodeMatch) {
+      data.postcode = postcodeMatch[0].toUpperCase();
+    }
+  }
+
+  if (addressLines.length > 0) {
+    data.address = addressLines.join(", ");
+  }
+
+  return data;
+};
 
   return (
     <div className="p-4 max-w-md mx-auto">
