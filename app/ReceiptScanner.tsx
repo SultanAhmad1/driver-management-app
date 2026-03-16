@@ -271,7 +271,7 @@ export default function ReceiptScanner() {
                   <div className="mt-4 p-3 rounded border">
                     <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
                     <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
-                    {/* <p><strong>Address:</strong> {receiptData.address || "Not found"}</p> */}
+                    <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
                     <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
                     <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
                     {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
