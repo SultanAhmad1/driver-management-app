@@ -62,11 +62,11 @@ export default function ReceiptScanner() {
       const parsedData = parseReceiptText(ocrText);
       setReceiptData(parsedData);
 
-      setFormData((prevData) => ({
-        ...prevData,
-        doorNo: parsedData?.doorNumber || "Not found",
-        postcode: parsedData?.postcode || "Not found",
-      }))
+      // setFormData((prevData) => ({
+      //   ...prevData,
+      //   doorNo: parsedData.doorNumber,
+      //   postcode: parsedData.postcode,
+      // }))
 
     } catch (err) {
       console.error("OCR error:", err);
@@ -282,8 +282,8 @@ export default function ReceiptScanner() {
                     <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
                     <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
                     <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
-                    {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
-                    {/* {receiptData.items && receiptData.items.length > 0 && (
+                    <p><strong>Total:</strong> {receiptData.total || "Not found"}</p>
+                    {receiptData.items && receiptData.items.length > 0 && (
                       <div>
                         <strong>Items:</strong>
                         <ul className="list-disc ml-5">
@@ -292,7 +292,7 @@ export default function ReceiptScanner() {
                           ))}
                         </ul>
                       </div>
-                    )} */}
+                    )}
                   </div>
                 )}
 
