@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { FaCamera } from "react-icons/fa";
 import Webcam from "react-webcam";
 import Tesseract from "tesseract.js";
 
@@ -11,6 +12,7 @@ type ReceiptData = {
   postcode?: string;
   total?: string;
   items?: string[];
+  orderNumber?: string;
 };
 
 type FormData = {
@@ -26,6 +28,7 @@ export default function ReceiptScanner() {
    const webcamRef = useRef<Webcam | null>(null);
   
     const [image, setImage] = useState<string | null>(null);
+    const [orderImage, setOrderImage] = useState<string | null>(null);
     const [text, setText] = useState("");
     const [loading, setLoading] = useState(false);
     const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
@@ -40,17 +43,26 @@ export default function ReceiptScanner() {
       orderNo: "",
     })
 
-  const capture = async () => {
+  const capture = async (isOrderNumber = false) => {
     const screenshot = webcamRef.current?.getScreenshot();
     if (!screenshot) {
       alert("Camera not ready");
       return;
     }
-    setImage(screenshot);
-    runOCR(screenshot);
+
+    if(isOrderNumber)
+    {
+      setOrderImage(screenshot)
+    }
+    else
+    {
+      setImage(screenshot);
+    }
+
+    runOCR(screenshot, isOrderNumber);
   };
 
-  const runOCR = async (src: string) => {
+  const runOCR = async (src: string, isOrderNumber: boolean) => {
     setLoading(true);
     try {
       const result = await Tesseract.recognize(src, "eng", {
@@ -60,14 +72,24 @@ export default function ReceiptScanner() {
       const ocrText = result.data.text;
       setText(ocrText);
 
-      const parsedData = parseReceiptText(ocrText);
+      const parsedData = parseReceiptText(ocrText, isOrderNumber);
       setReceiptData(parsedData);
 
-      setFormData((prevData) => ({
-        ...prevData,
-        doorNo: parsedData.doorNumber || "Not Found",
-        postcode: parsedData.postcode || "Not Found"
-      }))
+      if(isOrderNumber)
+      {
+        setFormData((prevData) => ({
+          ...prevData,
+          orderNo: parsedData?.orderNumber || "Not Found",
+        }))
+      }
+      else
+      {
+        setFormData((prevData) => ({
+          ...prevData,
+          doorNo: parsedData.doorNumber || "Not Found",
+          postcode: parsedData.postcode || "Not Found"
+        }))
+      }
     } catch (err) {
       console.error("OCR error:", err);
       alert("Failed to read receipt. Try again.");
@@ -76,7 +98,7 @@ export default function ReceiptScanner() {
     }
   };
 
-  const parseReceiptText = (text: string): ReceiptData => {
+  const parseReceiptText = (text: string, isOrderNumber: boolean): ReceiptData => {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
     const data: ReceiptData = { items: [] };
     let addressLines: string[] = [];
@@ -87,6 +109,17 @@ export default function ReceiptScanner() {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
+      if (isOrderNumber) {
+        // Match: "Order No: 12345" OR "#12345"
+        const orderMatch = line.match(
+          /(Order\s*No[:\s]*|#)\s*([A-Z0-9-]+)/i
+        );
+
+        if (orderMatch) {
+          data.orderNumber = orderMatch[2]; // actual number
+          return data;
+        }
+      }
       // Total
       if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
         data.total = line.match(/£?\d+(\.\d{2})?/)![0];
@@ -135,7 +168,7 @@ export default function ReceiptScanner() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 bg-white rounded shadow-md">
-      <h1 className="text-2xl font-bold mb-6 text-center">Driver Delivery Management System</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center">Driver Delivery Management System </h1>
 
       <form className="space-y-6">
 
@@ -247,7 +280,7 @@ export default function ReceiptScanner() {
           
                 {!image && (
                   <button
-                    onClick={capture}
+                    onClick={() => capture(false)}
                     className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
                   >
                     Take Photo
@@ -321,18 +354,114 @@ export default function ReceiptScanner() {
 
             </div>
           </div>
-            
+        }
+
+        {
+          // order number snap
+          optionSelected === 3 &&
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" >
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
+              
+              {/* Modal Header */}
+              <div className="flex justify-between items-center border-b px-4 py-3">
+                <h3 className="text-lg font-semibold">Scan Order Number</h3>
+                <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-4 overflow-y-auto flex-1">
+                <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+          
+                {!orderImage && (
+                  <Webcam
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    audio={false}
+                    width={350}
+                    mirrored={false}
+                    videoConstraints={{ facingMode: "environment" }}
+                  />
+                )}
+          
+                {!orderImage && (
+                  <button
+                    onClick={() => capture(false)}
+                    className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                  >
+                    Take Photo
+                  </button>
+                )}
+          
+                {orderImage && (
+                  <div className="mt-4">
+                    <img src={orderImage} className="rounded border" />
+                    <button
+                      onClick={() => {
+                        setOrderImage(null);
+                        setText("");
+                        setReceiptData(null);
+                      }}
+                      className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
+                    >
+                      Retake
+                    </button>
+                  </div>
+                )}
+          
+                {loading && <p className="mt-3">🧠 Reading receipt...</p>}
+          
+                {/* Parsed data */}
+                {receiptData && (
+                  <div className="mt-4 p-3 rounded border">
+                    <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
+                    <p><strong>Order Number:</strong> {receiptData.orderNumber || "Not found"}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-2 border-t px-4 py-3">
+                <button
+                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                  onClick={() => setOptionSelected(0)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  onClick={() => setOptionSelected(4)}
+                >
+                  Save
+                </button>
+              </div>
+
+            </div>
+          </div>
         }
 
         {/* Order Number */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Order No</label>
+      <div className="flex gap-4">
+        <div className="w-3/4">
+          <label className="block text-sm font-medium mb-2">
+            Order No
+          </label>
           <input
             type="text"
             placeholder="Enter Order Number"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={formData.orderNo}
+            onChange={(e) => setFormData((prevData) => ({...prevData, orderNo: e.target.value}))}
           />
         </div>
+
+        <div className="w-1/4 flex items-end">
+          <button type="button" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2" onClick={() => capture(true)}>
+            <FaCamera />
+          </button>
+        </div>
+      </div>
 
         {/* Submit Button */}
         <div className="text-center">
