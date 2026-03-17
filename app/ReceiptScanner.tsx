@@ -122,6 +122,14 @@ export default function ReceiptScanner() {
           data.orderNumber = orderMatch[2]; // actual number
           return data;
         }
+        else {
+          const hashOrderMatch = line.match(/#\s*([A-Z0-9\s-]+)/i);
+          if (hashOrderMatch) {
+            // safely access the capture group
+            data.orderNumber = hashOrderMatch[1].replace(/\s+/g, ""); // remove spaces if needed
+            return data;
+          }
+        }
       }
       // Total
       if (!data.total && /£?\d+(\.\d{2})?/.test(line)) {
