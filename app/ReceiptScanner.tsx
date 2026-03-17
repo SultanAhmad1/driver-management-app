@@ -45,6 +45,9 @@ export default function ReceiptScanner() {
 
   const capture = async (isOrderNumber = false) => {
     const screenshot = webcamRef.current?.getScreenshot();
+    
+    console.log("screen hot:", screenshot);
+    
     if (!screenshot) {
       alert("Camera not ready");
       return;
@@ -59,7 +62,7 @@ export default function ReceiptScanner() {
       setImage(screenshot);
     }
 
-    runOCR(screenshot, isOrderNumber);
+    await runOCR(screenshot, isOrderNumber);
   };
 
   const runOCR = async (src: string, isOrderNumber: boolean) => {
@@ -257,7 +260,7 @@ export default function ReceiptScanner() {
               
               {/* Modal Header */}
               <div className="flex justify-between items-center border-b px-4 py-3">
-                <h3 className="text-lg font-semibold">Modal Title 1</h3>
+                <h3 className="text-lg font-semibold">Postcode and door number snap modal</h3>
                 <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
                   ✕
                 </button>
@@ -456,8 +459,9 @@ export default function ReceiptScanner() {
           />
         </div>
 
+      
         <div className="w-1/4 flex items-end">
-          <button type="button" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2" onClick={() => capture(true)}>
+          <button type="button" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2" onClick={() => setOptionSelected(3)}>
             <FaCamera />
           </button>
         </div>
