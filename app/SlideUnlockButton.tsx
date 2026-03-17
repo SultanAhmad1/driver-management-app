@@ -60,8 +60,6 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
     };
   }, [dragging, dragX]);
 
-  console.log("status : ", status);
-  
   return (
     
         status === 0 ?

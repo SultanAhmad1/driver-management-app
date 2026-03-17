@@ -280,7 +280,7 @@ export default function ReceiptScanner() {
           className="flex items-center justify-center bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
           onClick={handleRemove}
         >
-          <FaTrash className="mr-1" /> Remove
+          <FaTrash className="mr-1" /> Clear All
         </button>
 
         <button
