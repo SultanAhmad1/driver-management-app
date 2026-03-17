@@ -270,6 +270,7 @@ export default function ReceiptScanner() {
   console.log("form data:", formData);
   
   return (
+    // new changes live
     <div className="space-y-2">
       <h1 className="text-2xl font-bold mb-6 text-center">Driver Delivery Management System </h1>
 
