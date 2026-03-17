@@ -113,13 +113,14 @@ export default function ReceiptScanner() {
       const line = lines[i];
 
       if (isOrderNumber) {
-        // Match: "Order No: 12345" OR "#12345"
-        const orderMatch = line.match(
-          /(Order\s*No[:\s]*|#)\s*([A-Z0-9-]+)/i
+        const cleanLine = line.replace(/\s+/g, " ").trim();
+
+        const orderMatch = cleanLine.match(
+          /Order\s*N[o0][:\s]*([A-Z0-9-]+)/i
         );
 
         if (orderMatch) {
-          data.orderNumber = orderMatch[2]; // actual number
+          data.orderNumber = orderMatch[1];
           return data;
         }
       }
