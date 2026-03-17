@@ -113,14 +113,13 @@ export default function ReceiptScanner() {
       const line = lines[i];
 
       if (isOrderNumber) {
-        const cleanLine = line.replace(/\s+/g, " ").trim();
-
-        const orderMatch = cleanLine.match(
+        // Match: "Order No: 12345" OR "#12345"
+        const orderMatch = line.match(
           /Order\s*N[o0][:\s]*([A-Z0-9-]+)/i
         );
 
         if (orderMatch) {
-          data.orderNumber = orderMatch[1];
+          data.orderNumber = orderMatch[2]; // actual number
           return data;
         }
       }
@@ -421,6 +420,14 @@ export default function ReceiptScanner() {
                   <div className="mt-4 p-3 rounded border">
                     <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
                     <p><strong>Order Number:</strong> {receiptData.orderNumber || "Not found"}</p>
+                  </div>
+                )}
+
+                {/* Full OCR text */}
+                {text && (
+                  <div className="mt-4 bg-gray-50 p-3 rounded">
+                    <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
+                    <pre className="whitespace-pre-wrap text-sm">{text}</pre>
                   </div>
                 )}
               </div>
