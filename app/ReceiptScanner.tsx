@@ -58,7 +58,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
     const [optionSelected, setOptionSelected] = useState(1)
     const [formData, setFormData] = useState<FormData[]>([addData]);
 
-  const capture = async (isOrderNumber = false, index) => {
+  const capture = async (isOrderNumber = false, index = 0) => {
     const screenshot = webcamRef.current?.getScreenshot();
     
     console.log("screen hot:", screenshot);
