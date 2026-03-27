@@ -135,50 +135,50 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
         const ocrText = ret.data.text;
 
-      const lines = ocrText
-      .split("\n")
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
+        const lines = ocrText
+        .split("\n")
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
 
-      setText(ocrText);
-      setNewText(JSON.stringify(lines))
+        setText(ocrText);
+        setNewText(JSON.stringify(lines))
 
-      const parsedData = parseReceiptText(ocrText, isOrderNumber);
-      setReceiptData(parsedData);
+        const parsedData = parseReceiptText(ocrText, isOrderNumber);
+        setReceiptData(parsedData);
 
-      if(isOrderNumber)
-      {
-        setFormData((prevData) => prevData.map((data, indexData) => 
-          index === indexData ? {
-            ...data,
-            orderNo: parsedData?.orderNumber || "Not Found",
-          }
-          :
-          data
-        ))
-      }
-      else
-      {
+        if(isOrderNumber)
+        {
+          setFormData((prevData) => prevData.map((data, indexData) => 
+            index === indexData ? {
+              ...data,
+              orderNo: parsedData?.orderNumber || "Not Found",
+            }
+            :
+            data
+          ))
+        }
+        else
+        {
 
-        // for direct orders
-        let telIndex = lines.findIndex((line) => line.startsWith("Tel"))
-        let orderIndex = lines.findIndex((line) => line.startsWith("Order Placed"))
-        
-        let startWithTel = telIndex === -1 ? 0 : telIndex + 2
-        let endWithPlaceOrder = orderIndex === -1 ? lines.length : orderIndex - 1
+          // for direct orders
+          let telIndex = lines.findIndex((line) => line.includes("Tel"))
+          let orderIndex = lines.findIndex((line) => line.includes("Order Placed"))
+          
+          let startWithTel = telIndex === -1 ? 0 : telIndex + 2
+          let endWithPlaceOrder = orderIndex === -1 ? lines.length : orderIndex - 1
 
-        setFormData((prevData) => prevData.map((data, indexData) => 
-          index === indexData ? {
-            ...data,
-            doorNo: lines[startWithTel] || "Not Found",
-            postcode: lines[endWithPlaceOrder] || "Not Found"
-          }
-          :
-          data
-        ))
+          setFormData((prevData) => prevData.map((data, indexData) => 
+            index === indexData ? {
+              ...data,
+              doorNo: lines[startWithTel] || "Not Found",
+              postcode: lines[endWithPlaceOrder] || "Not Found"
+            }
+            :
+            data
+          ))
 
-        setOptionSelected(2)
-      }
+          setOptionSelected(2)
+        }
 
         await worker.terminate();
       })();
