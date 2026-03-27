@@ -31,38 +31,83 @@ type FormData = {
 }
 
 export default function ReceiptScanner({driver, locationDropDown, partnerDropDown}: any) {
-   const webcamRef = useRef<Webcam | null>(null);
+  const webcamRef = useRef<Webcam | null>(null);
 
-    /*
-      1 = start
-      2 = Complete
-      3 = Cancel
-    */
-    const addData = {
-      id: 0,
-      locationId: null,
-      partnerId: null,
-      doorNo: "",
-      postcode: "",
-      fullAddress: "",
-      orderNo: "",
-      status: 0,
-    }
+  /*
+    1 = start
+    2 = Complete
+    3 = Cancel
+  */
+  const addData = {
+    id: 0,
+    locationId: null,
+    partnerId: null,
+    doorNo: "",
+    postcode: "",
+    fullAddress: "",
+    orderNo: "",
+    status: 0,
+  }
 
-    const [image, setImage] = useState<string | null>(null);
-    const [orderImage, setOrderImage] = useState<string | null>(null);
-    const [text, setText] = useState("");
-    const [newText, setNewText] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
-  
-    const [optionSelected, setOptionSelected] = useState(1)
-    const [formData, setFormData] = useState<FormData[]>([addData]);
+  const [image, setImage] = useState<string | null>(null);
+  const [orderImage, setOrderImage] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  const [newText, setNewText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+
+  const [optionSelected, setOptionSelected] = useState(1)
+  const [formData, setFormData] = useState<FormData[]>([addData]);
+
+  const cleanImage = (src: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = src;
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d")!;
+
+        // 🔥 Increase resolution (important)
+        canvas.width = img.width * 2;
+        canvas.height = img.height * 2;
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          // Convert to grayscale
+          const gray =
+            data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11;
+
+          // 🔥 Strong threshold (play with 150–200)
+          const value = gray > 170 ? 255 : 0;
+
+          data[i] = value;
+          data[i + 1] = value;
+          data[i + 2] = value;
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        resolve(canvas.toDataURL("image/png"));
+      };
+    });
+  };
 
   const capture = async (isOrderNumber = false, index = 0) => {
     const screenshot = webcamRef.current?.getScreenshot();
     
-    console.log("screen hot:", screenshot);
+    if (!screenshot) {
+      // alert("Camera not ready");
+      return;
+    }
+
+    const cleanedImage = await cleanImage(screenshot)
+
+    console.log("screen hot:", cleanedImage);
     
     if (!screenshot) {
       alert("Camera not ready");
@@ -71,14 +116,14 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
     if(isOrderNumber)
     {
-      setOrderImage(screenshot)
+      setOrderImage(cleanedImage)
     }
     else
     {
-      setImage(screenshot);
+      setImage(cleanedImage);
     }
 
-    await runOCR(screenshot, isOrderNumber, index);
+    await runOCR(cleanedImage, isOrderNumber, index);
   };
 
   const runOCR = async (src: string, isOrderNumber: boolean, index: number) => {
