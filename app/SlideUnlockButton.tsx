@@ -67,7 +67,7 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
             <div className="relative w-full h-24 flex items-center bg-gray-200 rounded-xl px-4 overflow-hidden">
             {/* Progress fill */}
             <div
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-gray-400 to-indigo-600 rounded-xl transition-all duration-200"
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-gray-400 to-green-600 rounded-xl transition-all duration-200"
             style={{ width: `${(dragX / maxMove) * 100}%` }}
             ></div>
 
@@ -101,7 +101,7 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
                 <div className="relative w-full h-24 flex items-center bg-green-200 rounded-xl px-4 overflow-hidden">
                     {/* Progress fill */}
                     <div
-                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-400 to-indigo-600 rounded-xl transition-all duration-200"
+                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-400 to-green-900 rounded-xl transition-all duration-200"
                         style={{ width: `${(dragX / maxMove) * 100}%` }}
                     ></div>
 
@@ -115,7 +115,7 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
                         type="button"
                         onMouseDown={handleStart}
                         onTouchStart={handleStart}
-                        className="absolute left-0 inline-flex items-center bg-green text-green-600 px-6 py-3 rounded-full text-lg font-semibold shadow-lg cursor-grab select-none transition-transform duration-200"
+                        className="absolute left-0 inline-flex items-center bg-green text-green-900 px-6 py-3 rounded-full text-lg font-semibold shadow-lg cursor-grab select-none transition-transform duration-200"
                         style={{ transform: `translateX(${dragX}px)` }}
                     >
                         Complete Your Journey
@@ -134,7 +134,7 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
                 <div className="relative w-full h-24 flex items-center bg-green-500 rounded-xl px-4 overflow-hidden">
                     {/* Progress fill */}
                     <div
-                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-400 to-indigo-600 rounded-xl transition-all duration-200"
+                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-400 to-red-600 rounded-xl transition-all duration-200"
                         style={{ width: `${(dragX / maxMove) * 100}%` }}
                     ></div>
 
@@ -166,7 +166,7 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
             <div className="relative w-full h-24 flex items-center bg-red-200 rounded-xl px-4 overflow-hidden">
                 {/* Progress fill */}
                 <div
-                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-red-200 to-indigo-600 rounded-xl transition-all duration-200"
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-red-200 to-gray-600 rounded-xl transition-all duration-200"
                     style={{ width: `${(dragX / maxMove) * 100}%` }}
                 ></div>
 
