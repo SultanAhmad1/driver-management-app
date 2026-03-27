@@ -113,11 +113,20 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       }
       else
       {
+
+        // for direct orders
+
+        let telIndex = lines.findIndex((line) => line.startsWith("Tel:"))
+        let orderIndex = lines.findIndex((line) => line.startsWith("Order Placed:"))
+        
+        let startWithTel = telIndex === -1 ? 0 : telIndex + 2
+        let endWithPlaceOrder = orderIndex === -1 ? lines.length : orderIndex - 1
+
         setFormData((prevData) => prevData.map((data, indexData) => 
           index === indexData ? {
             ...data,
-            doorNo: lines[0] || "Not Found",
-            postcode: lines[lines.length - 1] || "Not Found"
+            doorNo: lines[startWithTel] || "Not Found",
+            postcode: lines[endWithPlaceOrder] || "Not Found"
           }
           :
           data
