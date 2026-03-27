@@ -21,7 +21,8 @@ export default function DeliveryMap({ postcode, doorNo, setFormData, index, full
 //   const [fullAddress, setFullAddress] = useState<string>("");
 
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    // googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: "AIzaSyDxSh9nvtqw7behmbOHNC_mgeYUludCWSc"
   });
 
   // 1️⃣ Get driver location
@@ -51,7 +52,7 @@ export default function DeliveryMap({ postcode, doorNo, setFormData, index, full
       const res = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
           addressQuery
-        )}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+        )}&key=AIzaSyDxSh9nvtqw7behmbOHNC_mgeYUludCWSc`
       );
 
       const data = await res.json();
