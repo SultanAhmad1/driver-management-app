@@ -60,42 +60,45 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
   const [formData, setFormData] = useState<FormData[]>([addData]);
 
   const cleanImage = (src: string): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = src;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = src;
 
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d")!;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d")!;
 
-        // 🔥 Increase resolution (important)
-        canvas.width = img.width * 2;
-        canvas.height = img.height * 2;
+      // Slight upscale (not too much)
+      canvas.width = img.width * 1.5;
+      canvas.height = img.height * 1.5;
 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
 
-        for (let i = 0; i < data.length; i += 4) {
-          // Convert to grayscale
-          const gray =
-            data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
 
-          // 🔥 Strong threshold (play with 150–200)
-          const value = gray > 170 ? 255 : 0;
+        // ✅ grayscale
+        const gray = 0.3 * r + 0.59 * g + 0.11 * b;
 
-          data[i] = value;
-          data[i + 1] = value;
-          data[i + 2] = value;
-        }
+        // ✅ LIGHT contrast boost (NOT binary)
+        const contrast = (gray - 128) * 1.4 + 128;
 
-        ctx.putImageData(imageData, 0, 0);
+        data[i] = contrast;
+        data[i + 1] = contrast;
+        data[i + 2] = contrast;
+      }
 
-        resolve(canvas.toDataURL("image/png"));
-      };
-    });
-  };
+      ctx.putImageData(imageData, 0, 0);
+
+      resolve(canvas.toDataURL("image/png"));
+    };
+  });
+};
 
   const capture = async (isOrderNumber = false, index = 0) => {
     const screenshot = webcamRef.current?.getScreenshot();
