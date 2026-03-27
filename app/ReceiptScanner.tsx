@@ -126,7 +126,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
     }
   };
 
-  console.log("form data:", formData);
+  console.log("text data:", text);
   
   const parseReceiptText = (text: string, isOrderNumber: boolean): ReceiptData => {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
