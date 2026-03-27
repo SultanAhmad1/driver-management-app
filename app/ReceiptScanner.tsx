@@ -52,6 +52,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
     const [image, setImage] = useState<string | null>(null);
     const [orderImage, setOrderImage] = useState<string | null>(null);
     const [text, setText] = useState("");
+    const [newText, setNewText] = useState("");
     const [loading, setLoading] = useState(false);
     const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   
@@ -95,7 +96,8 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       .map(line => line.trim())
       .filter(line => line.length > 0);
 
-      setText(JSON.stringify(lines));
+      setText(ocrText);
+      setNewText(JSON.stringify(ocrText))
 
       const parsedData = parseReceiptText(ocrText, isOrderNumber);
       setReceiptData(parsedData);
@@ -470,6 +472,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                                 onClick={() => {
                                   setImage(null);
                                   setText("");
+                                  setNewText("")
                                   setReceiptData(null);
                                 }}
                                 className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
@@ -579,6 +582,8 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                       }
 
                       <h1>{text}</h1>
+
+                      <p>{newText}</p>
                       {
                         // optionSelected === 1 &&
                         // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" >
