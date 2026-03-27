@@ -8,6 +8,7 @@ import SlideUnlockButton from "./SlideUnlockButton";
 import SearchChangeOrder from "./SearchChangeOrder";
 import NavigationButtons from "./NavigationButtons";
 import UserDropdown from "./_component/dialingPad/UserDropdown";
+import DeliveryMap from "./DeliveryMap";
 
 type ReceiptData = {
   name?: string;
@@ -397,6 +398,46 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
   }
 
+   const [location, setLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+ 
+  
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (error) => {
+        console.error(error);
+        setPermissionDenied(true);
+      },
+      { enableHighAccuracy: true, timeout: 10000 } // optional
+    );
+  }, []);
+
+  if (permissionDenied) {
+    return (
+      <div className="p-4 bg-red-100 text-red-800 rounded">
+        <h2 className="text-lg font-bold mb-2">Location Required</h2>
+        <p>
+          You must allow location access to use this system. Please enable
+          location in your browser and refresh the page.
+        </p>
+      </div>
+    );
+  }
+  
   return (
     // new changes live
     <>
@@ -422,6 +463,13 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
       <div className="space-y-2">
         <h1 className="text-2xl font-bold mb-6 text-center">Driver Delivery Management System </h1>
+        
+        {location && (
+          <div className="mt-4">
+            <p><strong>Latitude:</strong> {location.lat}</p>
+            <p><strong>Longitude:</strong> {location.lng}</p>
+          </div>
+        )}
 
         {/* <SearchChangeOrder /> */}
         <div className="flex justify-center gap-2">
@@ -463,9 +511,9 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                   >
                     {/* Left: Order Info */}
                     <div className="flex flex-row">
-                      <span className="text-gray-500">Order No:&nbsp;</span>
+                      <span className="text-gray-500">Address:&nbsp;</span>
                       <span className="font-semibold text-gray-800">
-                        {formData?.orderNo || "N/A"}
+                        {formData?.doorNo || "house name"}, {formData?.postcode || "postcode"} 
                       </span>
                     </div>
 
@@ -533,7 +581,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                       
                       {/* Take Snap */}
                       {
-                        optionSelected === 1 &&
+                        // optionSelected === 1 &&
                         <div className="p-4 overflow-y-auto flex-1">
                           <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
                     
@@ -612,7 +660,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                         </div>
                       }
                       {/* Option Buttons */}
-                      <div className="flex gap-4">
+                      {/* <div className="flex gap-4">
                         {
                           optionSelected === 2 &&
                           <button type="button" className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onClick={() => setOptionSelected(1)}>
@@ -626,10 +674,10 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                             Manual
                           </button>
                         }
-                      </div>
+                      </div> */}
 
                       {
-                        optionSelected === 2 &&
+                        // optionSelected === 2 &&
                         <>
                           {/* Door Number */}
                           <div>
@@ -657,7 +705,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                                 onChange={(e) => handleInputs(index, e)}
                               />
                             </div>
-                            <button type="button" className="self-end bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            <button type="button" className="self-end bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onClick={() => setOptionSelected(5)}>
                               Search
                             </button>
                           </div>
@@ -677,9 +725,9 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                         </>
                       }
 
-                      <h1>{text}</h1>
+                      {/* <h1>{text}</h1>
 
-                      <p>{newText}</p>
+                      <p>{newText}</p> */}
                       {
                         // optionSelected === 1 &&
                         // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" >
@@ -907,8 +955,12 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                       />
 
                       {/* Display maps button */}
-
-                      <NavigationButtons />
+                      
+                      {
+                        optionSelected === 5 && formData.postcode && formData.doorNo &&
+                        <DeliveryMap {...{ postcode: formData.postcode, doorNo: formData.doorNo, setFormData, index, fullAddress: formData.fullAddress}} />
+                      }
+                      {/* <NavigationButtons /> */}
                     </form>
                   </div>
                 </div>

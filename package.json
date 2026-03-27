@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.20.8",
     "bcryptjs": "^3.0.3",
     "next": "16.1.6",
     "opencv.js": "^1.2.1",
