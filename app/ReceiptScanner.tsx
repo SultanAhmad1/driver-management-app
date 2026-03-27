@@ -108,11 +108,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
     const cleanedImage = await cleanImage(screenshot)
 
     console.log("screen hot:", cleanedImage);
-    
-    if (!screenshot) {
-      alert("Camera not ready");
-      return;
-    }
 
     if(isOrderNumber)
     {
