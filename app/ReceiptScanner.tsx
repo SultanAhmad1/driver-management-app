@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FaArrowDown, FaArrowUp, FaCamera, FaExchangeAlt, FaMinus, FaPlus, FaStackExchange, FaTrash } from "react-icons/fa";
 import Webcam from "react-webcam";
-import Tesseract from "tesseract.js";
+import Tesseract, { createWorker } from "tesseract.js";
 import SlideUnlockButton from "./SlideUnlockButton";
 import SearchChangeOrder from "./SearchChangeOrder";
 import NavigationButtons from "./NavigationButtons";
@@ -68,7 +68,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d")!;
 
-        // ✅ KEEP ORIGINAL SIZE (important)
         canvas.width = img.width;
         canvas.height = img.height;
 
@@ -81,18 +80,15 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
         const data = imageData.data;
 
         for (let i = 0; i < data.length; i += 4) {
-          // ✅ VERY LIGHT grayscale (no heavy contrast)
-          const gray =
-            0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
-
-          data[i] = gray;
-          data[i + 1] = gray;
-          data[i + 2] = gray;
+          // 🔥 LIGHT contrast only (NO grayscale force)
+          data[i] = Math.min(255, data[i] * 1.1);     // R
+          data[i + 1] = Math.min(255, data[i + 1] * 1.1); // G
+          data[i + 2] = Math.min(255, data[i + 2] * 1.1); // B
         }
 
         ctx.putImageData(imageData, 0, 0);
 
-        resolve(canvas.toDataURL("image/jpeg", 1)); // high quality
+        resolve(canvas.toDataURL("image/jpeg", 1));
       };
     });
   };
@@ -105,20 +101,18 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       return;
     }
 
-    const cleanedImage = await cleanImage(screenshot)
+    await runOCR(screenshot, isOrderNumber, index);
 
-    console.log("screen hot:", cleanedImage);
+    console.log("screen hot:", screenshot);
 
     if(isOrderNumber)
     {
-      setOrderImage(cleanedImage)
+      setOrderImage(screenshot)
     }
     else
     {
-      setImage(cleanedImage);
+      setImage(screenshot);
     }
-
-    await runOCR(cleanedImage, isOrderNumber, index);
   };
 
   const runOCR = async (src: string, isOrderNumber: boolean, index: number) => {
@@ -128,13 +122,18 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       //   logger: (m) => console.log(m), // logs progress
       // });
 
-      const result = await Tesseract.recognize(src, "eng", {
-        logger: (m) => console.log(m),
-        // --- ADD THESE CONFIGURATIONS ---
-        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.0.0/tesseract-core.wasm.js',
-      });
+      // const result = await Tesseract.recognize(src, "eng", {
+      //   logger: (m) => console.log(m),
+      //   // --- ADD THESE CONFIGURATIONS ---
+      //   corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.0.0/tesseract-core.wasm.js',
+      // });
 
-      const ocrText = result.data.text;
+      (async () => {
+        const worker = await createWorker('eng');
+        const ret = await worker.recognize('https://tesseract.projectnaptha.com/img/eng_bw.png');
+        console.log(ret.data.text);
+
+        const ocrText = ret.data.text;
 
       const lines = ocrText
       .split("\n")
@@ -180,6 +179,55 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
         setOptionSelected(2)
       }
+
+        await worker.terminate();
+      })();
+      // const ocrText = result.data.text;
+
+      // const lines = ocrText
+      // .split("\n")
+      // .map(line => line.trim())
+      // .filter(line => line.length > 0);
+
+      // setText(ocrText);
+      // setNewText(JSON.stringify(lines))
+
+      // const parsedData = parseReceiptText(ocrText, isOrderNumber);
+      // setReceiptData(parsedData);
+
+      // if(isOrderNumber)
+      // {
+      //   setFormData((prevData) => prevData.map((data, indexData) => 
+      //     index === indexData ? {
+      //       ...data,
+      //       orderNo: parsedData?.orderNumber || "Not Found",
+      //     }
+      //     :
+      //     data
+      //   ))
+      // }
+      // else
+      // {
+
+      //   // for direct orders
+      //   let telIndex = lines.findIndex((line) => line.startsWith("Tel"))
+      //   let orderIndex = lines.findIndex((line) => line.startsWith("Order Placed"))
+        
+      //   let startWithTel = telIndex === -1 ? 0 : telIndex + 2
+      //   let endWithPlaceOrder = orderIndex === -1 ? lines.length : orderIndex - 1
+
+      //   setFormData((prevData) => prevData.map((data, indexData) => 
+      //     index === indexData ? {
+      //       ...data,
+      //       doorNo: lines[startWithTel] || "Not Found",
+      //       postcode: lines[endWithPlaceOrder] || "Not Found"
+      //     }
+      //     :
+      //     data
+      //   ))
+
+      //   setOptionSelected(2)
+      // }
     } catch (err) {
       console.error("OCR error:", err);
       alert("Failed to read receipt. Try again.");
