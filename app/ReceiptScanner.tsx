@@ -97,7 +97,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       .filter(line => line.length > 0);
 
       setText(ocrText);
-      setNewText(JSON.stringify(ocrText))
+      setNewText(JSON.stringify(lines))
 
       const parsedData = parseReceiptText(ocrText, isOrderNumber);
       setReceiptData(parsedData);
@@ -117,9 +117,8 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       {
 
         // for direct orders
-
-        let telIndex = lines.findIndex((line) => line.startsWith("Tel:"))
-        let orderIndex = lines.findIndex((line) => line.startsWith("Order Placed:"))
+        let telIndex = lines.findIndex((line) => line.startsWith("Tel"))
+        let orderIndex = lines.findIndex((line) => line.startsWith("Order Placed"))
         
         let startWithTel = telIndex === -1 ? 0 : telIndex + 2
         let endWithPlaceOrder = orderIndex === -1 ? lines.length : orderIndex - 1
