@@ -88,7 +88,14 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       });
 
       const ocrText = result.data.text;
-      setText(ocrText);
+
+
+      const lines = ocrText
+      .split("\n")
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+      setText(JSON.stringify(lines));
 
       const parsedData = parseReceiptText(ocrText, isOrderNumber);
       setReceiptData(parsedData);
@@ -109,8 +116,8 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
         setFormData((prevData) => prevData.map((data, indexData) => 
           index === indexData ? {
             ...data,
-            doorNo: parsedData.doorNumber || "Not Found",
-            postcode: parsedData.postcode || "Not Found"
+            doorNo: lines[0] || "Not Found",
+            postcode: lines[lines.length - 1] || "Not Found"
           }
           :
           data
