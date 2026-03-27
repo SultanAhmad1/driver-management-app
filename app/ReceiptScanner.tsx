@@ -60,45 +60,42 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
   const [formData, setFormData] = useState<FormData[]>([addData]);
 
   const cleanImage = (src: string): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.src = src;
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = src;
 
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d")!;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d")!;
 
-      // Slight upscale (not too much)
-      canvas.width = img.width * 1.5;
-      canvas.height = img.height * 1.5;
+        // ✅ KEEP ORIGINAL SIZE (important)
+        canvas.width = img.width;
+        canvas.height = img.height;
 
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
+        ctx.drawImage(img, 0, 0);
 
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
 
-        // ✅ grayscale
-        const gray = 0.3 * r + 0.59 * g + 0.11 * b;
+        for (let i = 0; i < data.length; i += 4) {
+          // ✅ VERY LIGHT grayscale (no heavy contrast)
+          const gray =
+            0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
 
-        // ✅ LIGHT contrast boost (NOT binary)
-        const contrast = (gray - 128) * 1.4 + 128;
+          data[i] = gray;
+          data[i + 1] = gray;
+          data[i + 2] = gray;
+        }
 
-        data[i] = contrast;
-        data[i + 1] = contrast;
-        data[i + 2] = contrast;
-      }
+        ctx.putImageData(imageData, 0, 0);
 
-      ctx.putImageData(imageData, 0, 0);
-
-      resolve(canvas.toDataURL("image/png"));
-    };
-  });
-};
+        resolve(canvas.toDataURL("image/jpeg", 1)); // high quality
+      };
+    });
+  };
 
   const capture = async (isOrderNumber = false, index = 0) => {
     const screenshot = webcamRef.current?.getScreenshot();
@@ -504,7 +501,11 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
                               audio={false}
                               width={350}
                               mirrored={false}
-                              videoConstraints={{ facingMode: "environment" }}
+                              videoConstraints={{
+                                facingMode: "environment",
+                                width: { ideal: 1920 },
+                                height: { ideal: 1080 },
+                              }}
                             />
                           )}
                     
