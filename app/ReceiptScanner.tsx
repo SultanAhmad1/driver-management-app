@@ -84,12 +84,17 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
   const runOCR = async (src: string, isOrderNumber: boolean, index: number) => {
     setLoading(true);
     try {
+      // const result = await Tesseract.recognize(src, "eng", {
+      //   logger: (m) => console.log(m), // logs progress
+      // });
+
       const result = await Tesseract.recognize(src, "eng", {
-        logger: (m) => console.log(m), // logs progress
+        logger: (m) => console.log(m),
+        // --- ADD THESE CONFIGURATIONS ---
+        corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.0.0/tesseract-core.wasm.js',
       });
 
       const ocrText = result.data.text;
-
 
       const lines = ocrText
       .split("\n")
