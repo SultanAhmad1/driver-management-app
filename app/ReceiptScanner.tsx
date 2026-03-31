@@ -144,8 +144,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
     await runOCR(screenshot, isOrderNumber, index);
 
-    console.log("screen hot:", screenshot);
-
     if(isOrderNumber)
     {
       setOrderImage(screenshot)
@@ -172,8 +170,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       (async () => {
         const worker = await createWorker('eng');
         const ret = await worker.recognize(src);
-        console.log(ret.data.text);
-
         const ocrText = ret.data.text;
 
         const lines = ocrText
@@ -276,8 +272,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       setLoading(false);
     }
   };
-
-  console.log("text data:", text);
   
   const parseReceiptText = (text: string, isOrderNumber: boolean): ReceiptData => {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -472,10 +466,8 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       longitude: driverLocation?.lng,
     }
 
-    console.log("data to store :", dataToStore, driver.auth);
-
     try{
-      const res = await fetch(`https://laravel-jouleskitchen.cleartwo.uk/api/driver-update/${driver.id}`, {
+      const res = await fetch(`https://api.jouleskitchen.co.uk/api/driver-update/${driver.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -485,8 +477,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       });
 
       const data = await res.json();
-      console.log("submitted data: " ,data);
-
       const {deliveryOrder} = data?.data || {}
       setFormData((prev) => {
         const newData = [...prev];
@@ -526,8 +516,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
     setFormData(reversed);
   };
 
-  console.log("form data:", formData);
-  
   const handleLogout  = () => {
 
   }
@@ -621,8 +609,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log("run after every 30 second:");
-      
       // setCount((prev) => prev + 1);
 
       if (!navigator.geolocation) {
@@ -635,20 +621,16 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
         const cookieData = getCookie("deliveryData");
         if (cookieData) {
           const deliveryData = JSON.parse(cookieData); // parse JSON back to object/array
-          console.log("delivery data 1:",deliveryData);
           const filteredData = deliveryData.filter((data: any) => (data.id > 0))
   
           const sortedForm = filteredData.sort((a: any, b: any) => b.id - a.id);
           // const findIndex = sortedForm.find((data) => data?.id > 0)
-  
-          console.log("check the latest one:", sortedForm);
-          
           if(!sortedForm)
           {
             return
           }
   
-          const res = await fetch(`https://laravel-jouleskitchen.cleartwo.uk/api/driver-lat-lng-update/${driver.id}/${sortedForm[0]?.id}`, {
+          const res = await fetch(`https://api.jouleskitchen.co.uk/api/driver-lat-lng-update/${driver.id}/${sortedForm[0]?.id}`, {
            method: "PATCH",
            headers: {
              "Content-Type": "application/json",
@@ -658,8 +640,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
          });
    
          const data = await res.json();
-
-         console.log("lat long update: ", data);
          
         }
 
@@ -671,9 +651,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           });
-
-          console.log("inside the navigator:");
-          
           updateDriverLocation(position.coords.latitude, position.coords.longitude)
         },
         (error) => {

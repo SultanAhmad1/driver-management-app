@@ -28,10 +28,6 @@ export default function DeliveryMap({customerLat, customerLng,setOptionSelected,
     googleMapsApiKey: "AIzaSyDxSh9nvtqw7behmbOHNC_mgeYUludCWSc"
   });
 
-  // 1️⃣ Get driver location
-
-  console.log("delivery map token:", token);
-  
   // 2️⃣ Get customer full address and lat/lng using Google Geocode
   useEffect(() => {
     if(isSearchButtonClicked)
@@ -42,9 +38,6 @@ export default function DeliveryMap({customerLat, customerLng,setOptionSelected,
         // Combine postcode + door number
         // const addressQuery = `${doorNo}, ${postcode}`;
         const addressQuery = `${postcode}`;
-      
-       console.log("address query:", addressQuery);
-       
         const res = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
             addressQuery
@@ -60,7 +53,7 @@ export default function DeliveryMap({customerLat, customerLng,setOptionSelected,
   
           // now here mention driver location and customer location in form data
           try {
-              const res = await fetch(`https://laravel-jouleskitchen.cleartwo.uk/api/driver-distance`, {
+              const res = await fetch(`https://api.jouleskitchen.co.uk/api/driver-distance`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -80,9 +73,6 @@ export default function DeliveryMap({customerLat, customerLng,setOptionSelected,
               });
   
               const dataDiscatnce = await res.json();
-  
-              console.log("destination data:", dataDiscatnce);
-  
               setFormData((prevData: any) => prevData.map((data: any, indexData: number) => 
                 index === indexData ? {
                     ...data,
