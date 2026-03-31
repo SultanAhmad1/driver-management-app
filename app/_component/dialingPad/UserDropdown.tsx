@@ -17,9 +17,6 @@ export default function UserDropdown({ driver, handleLogout }: any) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
-  console.log("driver dropdown:", driver);
-  
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Button: Avatar + Name */}
