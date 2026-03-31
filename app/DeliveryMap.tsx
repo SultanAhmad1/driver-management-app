@@ -136,7 +136,7 @@ export default function DeliveryMap({customerLat, customerLng,setOptionSelected,
     e.preventDefault();
 
     const address = encodeURIComponent(fullAddress || "");
-    const url = `https://www.waze.com/ul?ll=${locationLatLong.lat},${locationLatLong.lng}&q=${address}&navigate=yes`;
+    const url = `https://www.waze.com/ul?ll=${customerLat},${customerLng}&q=${address}&navigate=yes`;
     window.open(url, "_blank");
   };
 
