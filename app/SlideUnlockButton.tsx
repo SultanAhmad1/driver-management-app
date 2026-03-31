@@ -84,7 +84,7 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
                 className="absolute left-0 inline-flex items-center bg-white text-black-600 px-6 py-3 rounded-full text-lg font-semibold shadow-lg cursor-grab select-none transition-transform duration-200"
                 style={{ transform: `translateX(${dragX}px)` }}
             >
-                Start Your Journey
+                Slide to start delivery
                 <span
                 className="ml-2 transition-transform duration-200"
                 style={{ transform: `translateX(${dragX / maxMove * 10}px)` }}
@@ -118,7 +118,7 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
                         className="absolute left-0 inline-flex items-center bg-green text-green-900 px-6 py-3 rounded-full text-lg font-semibold shadow-lg cursor-grab select-none transition-transform duration-200"
                         style={{ transform: `translateX(${dragX}px)` }}
                     >
-                        Complete Your Journey
+                        Slide to Complete
                         <span
                         className="ml-2 transition-transform duration-200"
                         style={{ transform: `translateX(${dragX / maxMove * 10}px)` }}
@@ -151,7 +151,7 @@ export default function SlideUnlockButton({ onSubmit, status }: { onSubmit: () =
                         className="absolute left-0 inline-flex items-center bg-green-900 text-green-600 px-6 py-3 rounded-full text-lg font-semibold shadow-lg cursor-grab select-none transition-transform duration-200"
                         style={{ transform: `translateX(${dragX}px)` }}
                     >
-                        Completed
+                        Delivered
                         <span
                         className="ml-2 transition-transform duration-200"
                         style={{ transform: `translateX(${dragX / maxMove * 10}px)` }}

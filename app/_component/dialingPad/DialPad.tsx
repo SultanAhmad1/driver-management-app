@@ -87,7 +87,7 @@ export default function DialPad() {
                 if (num === "⌫") handleDelete();
                 else if (num !== "") handlePress(num);
               }}
-              className="h-16 text-lg font-semibold bg-gray-200 rounded-xl active:scale-95 transition"
+              className="h-16 text-lg font-semibold bg-gray-400 text-white rounded-xl active:scale-95 transition"
             >
               {num}
             </button>

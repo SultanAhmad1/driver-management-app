@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FaArrowDown, FaArrowUp, FaCamera, FaExchangeAlt, FaMinus, FaPlus, FaStackExchange, FaTrash } from "react-icons/fa";
+import { FaAngleDown, FaAngleUp, FaArrowDown, FaArrowUp, FaCamera, FaCartArrowDown, FaExchangeAlt, FaMinus, FaPlus, FaStackExchange, FaTrash } from "react-icons/fa";
 import Webcam from "react-webcam";
 import Tesseract, { createWorker } from "tesseract.js";
 import SlideUnlockButton from "./SlideUnlockButton";
@@ -29,7 +29,32 @@ type FormData = {
   fullAddress: string,
   orderNo: string,
   status: number,
+  isReDelivery: boolean,
+  doorNoError: boolean,
+  postcodeError: boolean,
+  isSearchButtonClicked: boolean,
+  searchedIndex: number,
+  estimatedDeliveryTime: number,
+  isValidDelivery: number,
+  customerLat: number | null,
+  customerLng: number | null,
 }
+
+  // Function to get a cookie by name
+  function getCookie(name: string): string | null {
+    const cookies = document.cookie.split("; "); // split all cookies
+    for (const cookie of cookies) {
+      const [key, value] = cookie.split("="); // split name and value
+      if (key === name) return decodeURIComponent(value);
+    }
+    return null;
+  }
+
+  const setCookie = (name: string, value: string, hr = 1) => {
+    const expires = new Date(Date.now() + hr * 60 * 60* 1000).toUTCString();
+
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+  };
 
 export default function ReceiptScanner({driver, locationDropDown, partnerDropDown}: any) {
   const webcamRef = useRef<Webcam | null>(null);
@@ -48,6 +73,15 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
     fullAddress: "",
     orderNo: "",
     status: 0,
+    isReDelivery: false,
+    estimatedDeliveryTime: 0,
+    doorNoError: false,
+    postcodeError: false,
+    isSearchButtonClicked: false,
+    searchedIndex: -1,
+    isValidDelivery: 0,
+    customerLat: null,
+    customerLng: null,
   }
 
   const [image, setImage] = useState<string | null>(null);
@@ -59,6 +93,12 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
   const [optionSelected, setOptionSelected] = useState(1)
   const [formData, setFormData] = useState<FormData[]>([addData]);
+  
+  const [driverLocation, setDriverLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   const cleanImage = (src: string): Promise<string> => {
     return new Promise((resolve) => {
@@ -328,18 +368,34 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
     if(id === 0)
     {
-      setFormData([addData])
+      const updateLocationIdPartnerId = {
+        ...addData,
+        locationId: locationDropDown?.[0]?.value ?? null,
+        partnerId: partnerDropDown?.[0]?.value ?? null,
+      }
+      setFormData([updateLocationIdPartnerId])
       return
     }
+
     const updateForm = formData.filter((_, index) => (id !== index))
+
+    // when delete need to update cookies
+    setCookie("deliveryData", JSON.stringify(updateForm));
     setFormData(updateForm)
   }
 
   const handleAdd = () => {
-    setFormData((prev) => [addData, ...prev]);
+    const updateAddData = {
+      ...addData,
+      locationId: locationDropDown?.[0]?.value ?? null,
+      partnerId: partnerDropDown?.[0]?.value ?? null,
+    }
+
+    setFormData((prev) => [updateAddData, ...prev]);
+    setOptionSelected(5)
   };
 
-  const handleInputs = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputs = (index: number, event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
 
     const {value, name} = event.target;
 
@@ -353,38 +409,116 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
     })
   }
 
- const handleSubmit = (index: number) => {
-  window.alert("on submit the data is here:");
+  // set all driver details to local storage and clear after logout.
+  const handleSubmit = async (index: number) => {
+    // window.alert("on submit the data is here:");
 
-  setFormData((prev) => {
-    const newData = [...prev];
+    let currentStatus = 0
+    // setFormData((prev) => {
+    //   const newData = [...prev];
 
-    let currentStatus = newData[index].status;
-    
-    switch (newData[index].status) {
+    //   currentStatus = newData[index].status;
+      
+    //   switch (newData[index].status) {
+    //     case 0:
+    //         currentStatus = 1
+    //       break;
+    //     case 1:
+    //         currentStatus = 2
+    //       break;
+
+    //     case 2:
+    //         currentStatus = 3
+    //       break;
+
+    //     default:
+    //       currentStatus = 0
+    //       break;
+    //   }
+    //   newData[index] = {
+    //     ...newData[index],
+    //     status: currentStatus,
+    //   };
+
+    //   return newData;
+    // });
+
+
+    // get the index number, 
+    // fetch the information to store.
+
+    switch (formData[index].status) {
       case 0:
-          currentStatus = 1
+          currentStatus = 1 // start
         break;
       case 1:
-          currentStatus = 2
+          currentStatus = 2 // complete
         break;
 
       case 2:
-          currentStatus = 3
+          currentStatus = 3 // cancel
         break;
 
       default:
-        currentStatus = 0
+        currentStatus = 0 // default condition
         break;
     }
-    newData[index] = {
-      ...newData[index],
-      status: currentStatus,
-    };
 
-    return newData;
-  });
-};
+    const dataToStore = {
+      ...formData[index],
+      driverId: driver?.id,
+      status: currentStatus,
+      latitude: driverLocation?.lat,
+      longitude: driverLocation?.lng,
+    }
+
+    console.log("data to store :", dataToStore, driver.auth);
+
+    try{
+      const res = await fetch(`https://laravel-jouleskitchen.cleartwo.uk/api/driver-update/${driver.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${driver.auth}`, // if needed
+        },
+        body: JSON.stringify(dataToStore),
+      });
+
+      const data = await res.json();
+      console.log("submitted data: " ,data);
+
+      const {deliveryOrder} = data?.data || {}
+      setFormData((prev) => {
+        const newData = [...prev];
+        newData[index] = {
+          ...newData[index],
+          status: deliveryOrder?.deliver_status,
+          id: deliveryOrder?.id,
+        };
+        return newData;
+      });
+      setOptionSelected(5)
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
+
+  };
+
+  const handleIsReDelivery = (index: number, value: boolean) => {
+    setFormData((prev) => {
+      const newData = [...prev];
+      newData[index] = {
+        ...newData[index],
+        isReDelivery: value,
+      };
+      return newData;
+    });
+
+    // This is used to update cookie
+    setOptionSelected(5)
+  };
 
   const handleSorting = () => {
     const reversed = [...formData].reverse();
@@ -397,15 +531,17 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
   const handleLogout  = () => {
 
   }
-
-   const [location, setLocation] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
-  const [permissionDenied, setPermissionDenied] = useState(false);
- 
   
   useEffect(() => {
+    setFormData((prev) => {
+      return prev.map((item) => ({
+        ...item,
+        locationId: locationDropDown?.[0]?.value ?? null,
+        partnerId: partnerDropDown?.[0]?.value ?? null,
+        isSearchButtonClicked: false,
+      }));
+    });
+
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
       return;
@@ -413,7 +549,7 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation({
+        setDriverLocation({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
@@ -424,6 +560,13 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
       },
       { enableHighAccuracy: true, timeout: 10000 } // optional
     );
+
+    // Get your deliveryData cookie
+    const cookieData = getCookie("deliveryData");
+    if (cookieData) {
+      const deliveryData = JSON.parse(cookieData); // parse JSON back to object/array
+      setFormData(deliveryData)
+    }
   }, []);
 
   if (permissionDenied) {
@@ -438,6 +581,114 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
     );
   }
   
+  const handleSearch = (index: number) => {
+
+    setFormData((prev) => prev.map((data, indexData) =>
+        index === indexData ? {
+          ...data,
+          isSearchButtonClicked: true,
+          searchedIndex: index,
+        } : data
+      ))
+
+    const { postcode, doorNo } = formData[index];
+    if((postcode?.length ?? 0)  === 0 || (doorNo?.length ?? 0) === 0)
+    {
+      setFormData((prev) => prev.map((data, indexData) =>
+        index === indexData ? {
+          ...data,
+          postcodeError: true,
+          doorNoError: true,
+          isSearchButtonClicked: false,
+          searchedIndex: -1,
+        } : data
+      ))
+      return
+    }
+
+    // setOptionSelected(5)
+  }
+
+  useEffect(() => {
+    if(optionSelected === 5)
+    {
+    
+      setCookie("deliveryData", JSON.stringify(formData), 8); 
+      setOptionSelected(0)
+    }
+  }, [optionSelected])
+  
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("run after every 30 second:");
+      
+      // setCount((prev) => prev + 1);
+
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+      }
+
+      async function updateDriverLocation(lat: any, lng: any) {
+
+        const cookieData = getCookie("deliveryData");
+        if (cookieData) {
+          const deliveryData = JSON.parse(cookieData); // parse JSON back to object/array
+          console.log("delivery data 1:",deliveryData);
+          const filteredData = deliveryData.filter((data: any) => (data.id > 0))
+  
+          const sortedForm = filteredData.sort((a: any, b: any) => b.id - a.id);
+          // const findIndex = sortedForm.find((data) => data?.id > 0)
+  
+          console.log("check the latest one:", sortedForm);
+          
+          if(!sortedForm)
+          {
+            return
+          }
+  
+          const res = await fetch(`https://laravel-jouleskitchen.cleartwo.uk/api/driver-lat-lng-update/${driver.id}/${sortedForm[0]?.id}`, {
+           method: "PATCH",
+           headers: {
+             "Content-Type": "application/json",
+             Authorization: `Bearer ${driver.auth}`, // if needed
+           },
+           body: JSON.stringify({latitude: lat, longitude: lng}),
+         });
+   
+         const data = await res.json();
+
+         console.log("lat long update: ", data);
+         
+        }
+
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setDriverLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+
+          console.log("inside the navigator:");
+          
+          updateDriverLocation(position.coords.latitude, position.coords.longitude)
+        },
+        (error) => {
+          console.error(error);
+          setPermissionDenied(true);
+        },
+        { enableHighAccuracy: true, timeout: 10000 } // optional
+      );
+
+    }, 180000); 
+    // 3 minutes after driver lat and lng will be update.
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     // new changes live
     <>
@@ -463,14 +714,6 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
 
       <div className="space-y-2">
         <h1 className="text-2xl font-bold mb-6 text-center">Driver Delivery Management System </h1>
-        
-        {location && (
-          <div className="mt-4">
-            <p><strong>Latitude:</strong> {location.lat}</p>
-            <p><strong>Longitude:</strong> {location.lng}</p>
-          </div>
-        )}
-
         {/* <SearchChangeOrder /> */}
         <div className="flex justify-center gap-2">
           <button
@@ -490,484 +733,530 @@ export default function ReceiptScanner({driver, locationDropDown, partnerDropDow
           </button>
 
           <button
+            type="button"
             className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
             onClick={handleSorting}
           >
             <FaArrowUp className="text-xs " />
             <FaArrowDown className="text-xs" />
           </button>
+
+          <button
+            type="button"
+            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+            onClick={() => setOpenIndex(-1)}
+          >
+            <FaAngleUp className="text-xs " />
+            <FaAngleDown className="text-xs" />
+          </button>
         </div>
 
         {/* show data in ascending and descending order */}
+        <div className="mb-4 overflow-y-auto max-h-[400px]">
+          {
+            formData?.map((formData, index) => {
+              return(
+                <div key={index} className="rounded mb-2 overflow-y-auto max-h-[400px]">
+                  <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div
+                      className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 transition"
+                      onClick={() => toggleItem(index)}
+                    >
+                      {/* Left: Order Info */}
+                      <div className="flex flex-row">
+                        <span className="text-gray-500">Address:&nbsp;</span>
+                        <span className="font-semibold text-gray-800">
+                          {formData?.doorNo || "house name"}, {formData?.postcode || "postcode"} 
+                        </span>
+                      </div>
 
-        {
-          formData?.map((formData, index) => {
-            return(
-              <div key={index} className="rounded">
-                <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                  <div
-                    className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 transition"
-                    onClick={() => toggleItem(index)}
-                  >
-                    {/* Left: Order Info */}
-                    <div className="flex flex-row">
-                      <span className="text-gray-500">Address:&nbsp;</span>
-                      <span className="font-semibold text-gray-800">
-                        {formData?.doorNo || "house name"}, {formData?.postcode || "postcode"} 
-                      </span>
-                    </div>
+                      {/* Right: Actions + Arrow */}
+                      <div className="flex items-center gap-3">
+                        {/* Remove Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation(); // prevent accordion toggle
+                            handleIndividualRemove(index)
+                          }}
+                          className="flex items-center justify-center w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm transition"
+                        >
+                          <FaMinus size={12} />
+                        </button>
 
-                    {/* Right: Actions + Arrow */}
-                    <div className="flex items-center gap-3">
-                      {/* Remove Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation(); // prevent accordion toggle
-                          handleIndividualRemove(index)
-                        }}
-                        className="flex items-center justify-center w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm transition"
-                      >
-                        <FaMinus size={12} />
-                      </button>
-
-                      {/* Arrow */}
-                      <span
-                        className={`text-gray-500 transition-transform duration-300 ${
-                          openIndex === index ? "rotate-180" : ""
-                        }`}
-                      >
-                        ▲
-                      </span>
+                        {/* Arrow */}
+                        <span
+                          className={`text-gray-500 transition-transform duration-300 ${
+                            openIndex === index ? "rotate-180" : ""
+                          }`}
+                        >
+                          ▲
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div
-                  className={`px-4 overflow-hidden transition-[max-height] duration-300 ${
-                    openIndex === index ? "max-h-auto py-2 " : "max-h-0 py-0"
-                  }`}
-                >
-                  <div className="max-w-3xl mx-auto p-6 bg-white rounded shadow-md">
-                    <form className="space-y-6">
+                  <div
+                    className={`px-4 overflow-hidden transition-[max-height] duration-300 ${
+                      openIndex === index ? "max-h-auto py-2 " : "max-h-0 py-0"
+                    }`}
+                  >
+                    <div className="max-w-3xl mx-auto p-6 bg-white rounded shadow-md">
+                      <form className="space-y-6">
 
-                      {/* Location Group */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Location</label>
-                        <select className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          {
-                            locationDropDown?.map((location: any) => {
-                              return(
-                                <option key={location?.value}>{location?.label}</option>
-                              )
-                            })
-                          }
-                        </select>
-                      </div>
-
-                      {/* Partner Group */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Partner</label>
-                        <select className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          {
-                            partnerDropDown?.map((partner: any) => {
-                              return(
-                                <option key={partner?.value}>{partner?.label}</option>
-                              )
-                            })
-                          }
-                        </select>
-                      </div>
-                      
-                      {/* Take Snap */}
-                      {
-                        // optionSelected === 1 &&
-                        <div className="p-4 overflow-y-auto flex-1">
-                          <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
-                    
-                          {!image && (
-                            <Webcam
-                              ref={webcamRef}
-                              screenshotFormat="image/jpeg"
-                              audio={false}
-                              width={350}
-                              mirrored={false}
-                              videoConstraints={{
-                                facingMode: "environment",
-                                width: { ideal: 1920 },
-                                height: { ideal: 1080 },
-                              }}
-                            />
-                          )}
-                    
-                          {!image && (
-                            <button
-                              onClick={() => capture(false, index)}
-                              className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-                            >
-                              Take Photo
-                            </button>
-                          )}
-                    
-                          {image && (
-                            <div className="mt-4">
-                              <img src={image} className="rounded border" />
-                              <button
-                                onClick={() => {
-                                  setImage(null);
-                                  setText("");
-                                  setNewText("")
-                                  setReceiptData(null);
-                                }}
-                                className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
-                              >
-                                Retake
-                              </button>
-                            </div>
-                          )}
-                    
-                          {loading && <p className="mt-3">🧠 Reading receipt...</p>}
-                    
-                          {/* Parsed data */}
-                          {receiptData && (
-                            <div className="mt-4 p-3 rounded border">
-                              <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
-                              <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
-                              <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
-                              <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
-                              <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
-                              {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
-                              {/* {receiptData.items && receiptData.items.length > 0 && (
-                                <div>
-                                  <strong>Items:</strong>
-                                  <ul className="list-disc ml-5">
-                                    {receiptData.items.map((item, i) => (
-                                      <li key={i}>{item}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )} */}
-                            </div>
-                          )}
-                    
-                          {/* Full OCR text */}
-                          {/* {text && (
-                            <div className="mt-4 bg-gray-50 p-3 rounded">
-                              <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
-                              <pre className="whitespace-pre-wrap text-sm">{text}</pre>
-                            </div>
-                          )} */}
+                        {/* Location Group */}
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Location</label>
+                          <select
+                            name="locationId"
+                            value={formData.locationId ?? ""}
+                            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onChange={(e) => handleInputs(index, e)}
+                          >
+                            {locationDropDown?.map((location: any) => (
+                              <option key={location?.value} value={location?.value}>
+                                {location?.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      }
-                      {/* Option Buttons */}
-                      {/* <div className="flex gap-4">
-                        {
-                          optionSelected === 2 &&
-                          <button type="button" className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onClick={() => setOptionSelected(1)}>
-                            Take Snap
-                          </button>
-                        }
 
+                        {/* Partner Group */}
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Partner</label>
+                          <select
+                            name="partnerId"
+                            value={formData.partnerId ?? ""}
+                            onChange={(e) => handleInputs(index, e)}
+                            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {
+                              partnerDropDown?.map((partner: any) => {
+                                return(
+                                  <option key={partner?.value} value={partner?.value}>
+                                    {partner?.label}
+                                  </option>
+                                )
+                              })
+                            }
+                          </select>
+                        </div>
+                        
+                        {/* Take Snap */}
                         {
-                          optionSelected === 1 &&
-                          <button type="button" className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400" onClick={() => setOptionSelected(2)}>
-                            Manual
-                          </button>
-                        }
-                      </div> */}
-
-                      {
-                        // optionSelected === 2 &&
-                        <>
-                          {/* Door Number */}
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Door Number</label>
-                            <input
-                              type="text"
-                              placeholder="Enter Door Number"
-                              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              value={formData.doorNo}
-                              name="doorNo"
-                              onChange={(e) => handleInputs(index, e)}
-                            />
+                          // optionSelected === 1 &&
+                          <div className="p-4 overflow-y-auto flex-1">
+                            <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+                      
+                            {!image && (
+                              <Webcam
+                                ref={webcamRef}
+                                screenshotFormat="image/jpeg"
+                                audio={false}
+                                width={350}
+                                mirrored={false}
+                                videoConstraints={{
+                                  facingMode: "environment",
+                                  width: { ideal: 1920 },
+                                  height: { ideal: 1080 },
+                                }}
+                              />
+                            )}
+                      
+                            {!image && (
+                              <button
+                                onClick={() => capture(false, index)}
+                                className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                              >
+                                Take Photo
+                              </button>
+                            )}
+                      
+                            {image && (
+                              <div className="mt-4">
+                                <img src={image} className="rounded border" />
+                                <button
+                                  onClick={() => {
+                                    setImage(null);
+                                    setText("");
+                                    setNewText("")
+                                    setReceiptData(null);
+                                  }}
+                                  className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
+                                >
+                                  Retake
+                                </button>
+                              </div>
+                            )}
+                      
+                            {loading && <p className="mt-3">🧠 Reading receipt...</p>}
+                      
+                            {/* Parsed data */}
+                            {receiptData && (
+                              <div className="mt-4 p-3 rounded border">
+                                <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
+                                <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
+                                <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
+                                <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+                                <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
+                                {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
+                                {/* {receiptData.items && receiptData.items.length > 0 && (
+                                  <div>
+                                    <strong>Items:</strong>
+                                    <ul className="list-disc ml-5">
+                                      {receiptData.items.map((item, i) => (
+                                        <li key={i}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )} */}
+                              </div>
+                            )}
+                      
+                            {/* Full OCR text */}
+                            {/* {text && (
+                              <div className="mt-4 bg-gray-50 p-3 rounded">
+                                <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
+                                <pre className="whitespace-pre-wrap text-sm">{text}</pre>
+                              </div>
+                            )} */}
                           </div>
+                        }
+                        {/* Option Buttons */}
+                        {/* <div className="flex gap-4">
+                          {
+                            optionSelected === 2 &&
+                            <button type="button" className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onClick={() => setOptionSelected(1)}>
+                              Take Snap
+                            </button>
+                          }
 
-                          {/* Postcode with Search */}
-                          <div className="flex gap-2">
-                            <div className="flex-1">
-                              <label className="block text-sm font-medium mb-2">Postcode</label>
+                          {
+                            optionSelected === 1 &&
+                            <button type="button" className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400" onClick={() => setOptionSelected(2)}>
+                              Manual
+                            </button>
+                          }
+                        </div> */}
+
+                        {
+                          // optionSelected === 2 &&
+                          <>
+                            {/* Door Number */}
+                            <div>
+                              <label className="block text-sm font-medium mb-2">Door Number</label>
                               <input
                                 type="text"
-                                placeholder="Enter Postcode"
+                                placeholder="Enter Door Number"
                                 className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value={formData.postcode}
-                                name="postcode"
+                                value={formData.doorNo}
+                                name="doorNo"
+                                onChange={(e) => handleInputs(index, e)}
+                              />
+                              {   
+                                formData.doorNoError && <p className="p-2 bg-red-100 text-red-500 text-sm">Door number is required.</p>
+                              }
+                            </div>
+
+                            
+                            {/* Postcode with Search */}
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <label className="block text-sm font-medium mb-2">Postcode</label>
+                                <input
+                                  type="text"
+                                  placeholder="Enter Postcode"
+                                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  value={formData.postcode}
+                                  name="postcode"
+                                  onChange={(e) => handleInputs(index, e)}
+                                />
+                              </div>
+                              <button disabled={formData.isSearchButtonClicked} type="button" className="self-end bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onClick={() => handleSearch(index)}>
+                                {
+                                  formData.isSearchButtonClicked ? "Searching..." : "Search"
+                                }
+                              </button>
+                            </div>
+                            {
+                              formData.postcodeError && <p className="p-2 bg-red-100 text-red-500 text-sm">Postcode is required.</p>
+                            }
+
+                            {/* Full Address */}
+                            <div>
+                              <label className="block text-sm font-medium mb-2">Full Address</label>
+                              <textarea
+                                placeholder="Full Address"
+                                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={formData.fullAddress}
+                                name="fullAddress"
                                 onChange={(e) => handleInputs(index, e)}
                               />
                             </div>
-                            <button type="button" className="self-end bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onClick={() => setOptionSelected(5)}>
-                              Search
-                            </button>
-                          </div>
+                          </>
+                        }
 
-                          {/* Full Address */}
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Full Address</label>
+                        {/* <h1>{text}</h1>
+
+                        <p>{newText}</p> */}
+                        {
+                          // optionSelected === 1 &&
+                          // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" >
+                          //   <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
+                              
+                          //     {/* Modal Header */}
+                          //     <div className="flex justify-between items-center border-b px-4 py-3">
+                          //       <h3 className="text-lg font-semibold">Postcode and door number snap modal</h3>
+                          //       <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
+                          //         ✕
+                          //       </button>
+                          //     </div>
+
+                          //     {/* Modal Body */}
+                          //     <div className="p-4 overflow-y-auto flex-1">
+                          //       <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+                          
+                          //       {!image && (
+                          //         <Webcam
+                          //           ref={webcamRef}
+                          //           screenshotFormat="image/jpeg"
+                          //           audio={false}
+                          //           width={350}
+                          //           mirrored={false}
+                          //           videoConstraints={{ facingMode: "environment" }}
+                          //         />
+                          //       )}
+                          
+                          //       {!image && (
+                          //         <button
+                          //           onClick={() => capture(false)}
+                          //           className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                          //         >
+                          //           Take Photo
+                          //         </button>
+                          //       )}
+                          
+                          //       {image && (
+                          //         <div className="mt-4">
+                          //           <img src={image} className="rounded border" />
+                          //           <button
+                          //             onClick={() => {
+                          //               setImage(null);
+                          //               setText("");
+                          //               setReceiptData(null);
+                          //             }}
+                          //             className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
+                          //           >
+                          //             Retake
+                          //           </button>
+                          //         </div>
+                          //       )}
+                          
+                          //       {loading && <p className="mt-3">🧠 Reading receipt...</p>}
+                          
+                          //       {/* Parsed data */}
+                          //       {receiptData && (
+                          //         <div className="mt-4 p-3 rounded border">
+                          //           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
+                          //           <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
+                          //           <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
+                          //           <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
+                          //           <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
+                          //           {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
+                          //           {/* {receiptData.items && receiptData.items.length > 0 && (
+                          //             <div>
+                          //               <strong>Items:</strong>
+                          //               <ul className="list-disc ml-5">
+                          //                 {receiptData.items.map((item, i) => (
+                          //                   <li key={i}>{item}</li>
+                          //                 ))}
+                          //               </ul>
+                          //             </div>
+                          //           )} */}
+                          //         </div>
+                          //       )}
+                          
+                          //       {/* Full OCR text */}
+                          //       {/* {text && (
+                          //         <div className="mt-4 bg-gray-50 p-3 rounded">
+                          //           <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
+                          //           <pre className="whitespace-pre-wrap text-sm">{text}</pre>
+                          //         </div>
+                          //       )} */}
+                          //     </div>
+
+                          //     {/* Modal Footer */}
+                          //     <div className="flex justify-end gap-2 border-t px-4 py-3">
+                          //       <button
+                          //         className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                          //         onClick={() => setOptionSelected(0)}
+                          //       >
+                          //         Cancel
+                          //       </button>
+                          //       <button
+                          //         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          //         onClick={() => setOptionSelected(2)}
+                          //       >
+                          //         Save
+                          //       </button>
+                          //     </div>
+
+                          //   </div>
+                          // </div>
+                        }
+
+                        {
+                          // order number snap
+                          // optionSelected === 3 &&
+                          // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" >
+                          //   <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
+                              
+                          //     {/* Modal Header */}
+                          //     <div className="flex justify-between items-center border-b px-4 py-3">
+                          //       <h3 className="text-lg font-semibold">Scan Order Number</h3>
+                          //       <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
+                          //         ✕
+                          //       </button>
+                          //     </div>
+
+                          //     {/* Modal Body */}
+                          //     <div className="p-4 overflow-y-auto flex-1">
+                          //       <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
+                          
+                          //       {!orderImage && (
+                          //         <Webcam
+                          //           ref={webcamRef}
+                          //           screenshotFormat="image/jpeg"
+                          //           audio={false}
+                          //           width={350}
+                          //           mirrored={false}
+                          //           videoConstraints={{ facingMode: "environment" }}
+                          //         />
+                          //       )}
+                          
+                          //       {!orderImage && (
+                          //         <button
+                          //           onClick={() => capture(true, index)}
+                          //           className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
+                          //         >
+                          //           Take Photo
+                          //         </button>
+                          //       )}
+                          
+                          //       {orderImage && (
+                          //         <div className="mt-4">
+                          //           <img src={orderImage} className="rounded border" />
+                          //           <button
+                          //             onClick={() => {
+                          //               setOrderImage(null);
+                          //               setText("");
+                          //               setReceiptData(null);
+                          //             }}
+                          //             className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
+                          //           >
+                          //             Retake
+                          //           </button>
+                          //         </div>
+                          //       )}
+                          
+                          //       {loading && <p className="mt-3">🧠 Reading receipt...</p>}
+                          
+                          //       {/* Parsed data */}
+                          //       {receiptData && (
+                          //         <div className="mt-4 p-3 rounded border">
+                          //           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
+                          //           <p><strong>Order Number:</strong> {receiptData.orderNumber || "Not found"}</p>
+                          //         </div>
+                          //       )}
+                          //     </div>
+
+                          //     {/* Modal Footer */}
+                          //     <div className="flex justify-end gap-2 border-t px-4 py-3">
+                          //       <button
+                          //         className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                          //         onClick={() => setOptionSelected(0)}
+                          //       >
+                          //         Cancel
+                          //       </button>
+                          //       <button
+                          //         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          //         onClick={() => setOptionSelected(4)}
+                          //       >
+                          //         Save
+                          //       </button>
+                          //     </div>
+
+                          //   </div>
+                          // </div>
+                        }
+
+                        {/* Order Number */}
+                        {/* <div className="flex gap-4">
+                          <div className="w-3/4">
+                            <label className="block text-sm font-medium mb-2">
+                              Order No
+                            </label>
                             <input
                               type="text"
-                              placeholder="Full Address"
+                              placeholder="Enter Order Number"
                               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              value={formData.fullAddress}
-                              name="fullAddress"
+                              value={formData.orderNo}
+                              name="orderNo"
                               onChange={(e) => handleInputs(index, e)}
                             />
                           </div>
-                        </>
-                      }
 
-                      {/* <h1>{text}</h1>
+                        
+                          <div className="w-1/4 flex items-end">
+                            <button type="button" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2" onClick={() => setOptionSelected(3)}>
+                              <FaCamera />
+                            </button>
+                          </div>
+                        </div> */}
 
-                      <p>{newText}</p> */}
-                      {
-                        // optionSelected === 1 &&
-                        // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" >
-                        //   <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
-                            
-                        //     {/* Modal Header */}
-                        //     <div className="flex justify-between items-center border-b px-4 py-3">
-                        //       <h3 className="text-lg font-semibold">Postcode and door number snap modal</h3>
-                        //       <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
-                        //         ✕
-                        //       </button>
-                        //     </div>
-
-                        //     {/* Modal Body */}
-                        //     <div className="p-4 overflow-y-auto flex-1">
-                        //       <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
-                        
-                        //       {!image && (
-                        //         <Webcam
-                        //           ref={webcamRef}
-                        //           screenshotFormat="image/jpeg"
-                        //           audio={false}
-                        //           width={350}
-                        //           mirrored={false}
-                        //           videoConstraints={{ facingMode: "environment" }}
-                        //         />
-                        //       )}
-                        
-                        //       {!image && (
-                        //         <button
-                        //           onClick={() => capture(false)}
-                        //           className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-                        //         >
-                        //           Take Photo
-                        //         </button>
-                        //       )}
-                        
-                        //       {image && (
-                        //         <div className="mt-4">
-                        //           <img src={image} className="rounded border" />
-                        //           <button
-                        //             onClick={() => {
-                        //               setImage(null);
-                        //               setText("");
-                        //               setReceiptData(null);
-                        //             }}
-                        //             className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
-                        //           >
-                        //             Retake
-                        //           </button>
-                        //         </div>
-                        //       )}
-                        
-                        //       {loading && <p className="mt-3">🧠 Reading receipt...</p>}
-                        
-                        //       {/* Parsed data */}
-                        //       {receiptData && (
-                        //         <div className="mt-4 p-3 rounded border">
-                        //           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
-                        //           <p><strong>Name:</strong> {receiptData.name || "Not found"}</p>
-                        //           <p><strong>Address:</strong> {receiptData.address || "Not found"}</p>
-                        //           <p><strong>Door Number:</strong> {receiptData.doorNumber || "Not found"}</p>
-                        //           <p><strong>Postcode:</strong> {receiptData.postcode || "Not found"}</p>
-                        //           {/* <p><strong>Total:</strong> {receiptData.total || "Not found"}</p> */}
-                        //           {/* {receiptData.items && receiptData.items.length > 0 && (
-                        //             <div>
-                        //               <strong>Items:</strong>
-                        //               <ul className="list-disc ml-5">
-                        //                 {receiptData.items.map((item, i) => (
-                        //                   <li key={i}>{item}</li>
-                        //                 ))}
-                        //               </ul>
-                        //             </div>
-                        //           )} */}
-                        //         </div>
-                        //       )}
-                        
-                        //       {/* Full OCR text */}
-                        //       {/* {text && (
-                        //         <div className="mt-4 bg-gray-50 p-3 rounded">
-                        //           <h3 className="font-semibold mb-2">📄 Full OCR Text</h3>
-                        //           <pre className="whitespace-pre-wrap text-sm">{text}</pre>
-                        //         </div>
-                        //       )} */}
-                        //     </div>
-
-                        //     {/* Modal Footer */}
-                        //     <div className="flex justify-end gap-2 border-t px-4 py-3">
-                        //       <button
-                        //         className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                        //         onClick={() => setOptionSelected(0)}
-                        //       >
-                        //         Cancel
-                        //       </button>
-                        //       <button
-                        //         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                        //         onClick={() => setOptionSelected(2)}
-                        //       >
-                        //         Save
-                        //       </button>
-                        //     </div>
-
-                        //   </div>
-                        // </div>
-                      }
-
-                      {
-                        // order number snap
-                        // optionSelected === 3 &&
-                        // <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" >
-                        //   <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
-                            
-                        //     {/* Modal Header */}
-                        //     <div className="flex justify-between items-center border-b px-4 py-3">
-                        //       <h3 className="text-lg font-semibold">Scan Order Number</h3>
-                        //       <button className="text-gray-500 hover:text-gray-700" onClick={() => setOptionSelected(0)}>
-                        //         ✕
-                        //       </button>
-                        //     </div>
-
-                        //     {/* Modal Body */}
-                        //     <div className="p-4 overflow-y-auto flex-1">
-                        //       <h2 className="text-xl font-bold mb-3">Receipt Scanner</h2>
-                        
-                        //       {!orderImage && (
-                        //         <Webcam
-                        //           ref={webcamRef}
-                        //           screenshotFormat="image/jpeg"
-                        //           audio={false}
-                        //           width={350}
-                        //           mirrored={false}
-                        //           videoConstraints={{ facingMode: "environment" }}
-                        //         />
-                        //       )}
-                        
-                        //       {!orderImage && (
-                        //         <button
-                        //           onClick={() => capture(true, index)}
-                        //           className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-                        //         >
-                        //           Take Photo
-                        //         </button>
-                        //       )}
-                        
-                        //       {orderImage && (
-                        //         <div className="mt-4">
-                        //           <img src={orderImage} className="rounded border" />
-                        //           <button
-                        //             onClick={() => {
-                        //               setOrderImage(null);
-                        //               setText("");
-                        //               setReceiptData(null);
-                        //             }}
-                        //             className="mt-2 bg-gray-500 text-white px-3 py-1 rounded"
-                        //           >
-                        //             Retake
-                        //           </button>
-                        //         </div>
-                        //       )}
-                        
-                        //       {loading && <p className="mt-3">🧠 Reading receipt...</p>}
-                        
-                        //       {/* Parsed data */}
-                        //       {receiptData && (
-                        //         <div className="mt-4 p-3 rounded border">
-                        //           <h3 className="font-semibold mb-2">📝 Parsed Receipt Data</h3>
-                        //           <p><strong>Order Number:</strong> {receiptData.orderNumber || "Not found"}</p>
-                        //         </div>
-                        //       )}
-                        //     </div>
-
-                        //     {/* Modal Footer */}
-                        //     <div className="flex justify-end gap-2 border-t px-4 py-3">
-                        //       <button
-                        //         className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                        //         onClick={() => setOptionSelected(0)}
-                        //       >
-                        //         Cancel
-                        //       </button>
-                        //       <button
-                        //         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                        //         onClick={() => setOptionSelected(4)}
-                        //       >
-                        //         Save
-                        //       </button>
-                        //     </div>
-
-                        //   </div>
-                        // </div>
-                      }
-
-                      {/* Order Number */}
-                      {/* <div className="flex gap-4">
-                        <div className="w-3/4">
-                          <label className="block text-sm font-medium mb-2">
-                            Order No
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Enter Order Number"
-                            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            value={formData.orderNo}
-                            name="orderNo"
-                            onChange={(e) => handleInputs(index, e)}
-                          />
-                        </div>
-
-                      
-                        <div className="w-1/4 flex items-end">
-                          <button type="button" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2" onClick={() => setOptionSelected(3)}>
-                            <FaCamera />
+                        <div className="flex justify-between">
+                          <p>Is Redelivery?.</p>
+                          <button
+                              type="button"
+                              className={`w-14 h-8 flex items-center rounded-full p-1 transition duration-300 ${
+                                formData.isReDelivery ? "bg-green-500" : "bg-gray-300"
+                              }`}
+                              onClick={() => handleIsReDelivery(index, !formData.isReDelivery)}
+                            >
+                              <div
+                                className={`bg-white w-6 h-6 rounded-full shadow-md transform transition duration-300 ${
+                                  formData.isReDelivery ? "translate-x-6" : ""
+                                }`}
+                              />
                           </button>
                         </div>
-                      </div> */}
 
-                      {/* Submit Button */}
-                      <SlideUnlockButton 
-                      
-                        {
-                          ...{
-                            onSubmit: () => handleSubmit(index),
-                            status: formData.status
+                        {/* Submit Button */}
+                        <SlideUnlockButton 
+                        
+                          {
+                            ...{
+                              onSubmit: () => handleSubmit(index),
+                              status: formData.status
+                            }
                           }
-                        }
-                      />
+                        />
 
-                      {/* Display maps button */}
-                      
-                      {
-                        optionSelected === 5 && formData.postcode && formData.doorNo &&
-                        <DeliveryMap {...{ postcode: formData.postcode, doorNo: formData.doorNo, setFormData, index, fullAddress: formData.fullAddress}} />
-                      }
-                      {/* <NavigationButtons /> */}
-                    </form>
+                        {/* Display maps button */}
+                        
+                        {
+                          formData.searchedIndex === index &&
+                          <DeliveryMap {...{customerLat: formData.customerLat, customerLng: formData.customerLng, setOptionSelected, isSearchButtonClicked: formData.isSearchButtonClicked, token: driver.auth, postcode: formData.postcode, doorNo: formData.doorNo, setFormData, index, fullAddress: formData.fullAddress, locationLatLong: driverLocation}} />
+                        }
+                        {/* <NavigationButtons /> */}
+                      </form>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })
-        }
+              )
+            })
+          }
+        </div>
       </div>
     </>
   );
