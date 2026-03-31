@@ -13,7 +13,7 @@ export default async function postDriverLogin(prevState: any, formData: FormData
 
   const res = await fetch(
     // `${process.env.NEXT_PUBLIC_BASE_URL}/driver-login`,
-    `https://laravel-jouleskitchen.cleartwo.uk/api/driver-login`,
+    `https://api.jouleskitchen.co.uk/api/driver-login`,
     {
       method: "POST",
       headers: {
@@ -25,8 +25,6 @@ export default async function postDriverLogin(prevState: any, formData: FormData
   );
 
   const data = await res.json();
-
-  console.log("data: ", data);
   
   if (!res.ok) {
     return {

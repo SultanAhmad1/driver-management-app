@@ -20,9 +20,6 @@ export default async function Home() {
   let driverData = null;
   try {
     driverData = JSON.parse(driverCookie.value); // convert string to object
-
-    console.log("parse driver:", driverData);
-    
   } catch (err) {
     console.error("Failed to parse driver cookie:", err);
     redirect("/login"); // if parsing fails, force login
